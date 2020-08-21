@@ -31,7 +31,10 @@ npm install hexo-deployer-git --save
    
    npm install hexo-generator-feed
    npm install hexo-generator-sitemap
+   
+10. 维护两个分支的必要性
 
+http://www.yangbing.club/2019/06/29/save-hexo-source-post-with-git-branch/ 
 ```
 
 在站点myBlog/_config.yml中添加search字段，如下：
