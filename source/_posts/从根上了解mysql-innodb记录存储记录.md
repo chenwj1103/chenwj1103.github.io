@@ -13,6 +13,8 @@ InnoDB采取的方式是：将数据划分为若干个页，以页作为磁盘�
 
 设计了4种不同类型的行格式，分别是Compact、Redundant、Dynamic和Compressed行格式
 
+< !-- more -->
+
 ### Compact 格式
 
 ![compact结构](/images/mysql2/compact结构.png)
