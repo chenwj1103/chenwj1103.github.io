@@ -26,6 +26,12 @@ npm install hexo-generator-searchdb --save
 
 8. 安装hexo-deployer-git插件
 npm install hexo-deployer-git --save
+
+9. 切换到blog根目录下，输入：
+   
+   npm install hexo-generator-feed
+   npm install hexo-generator-sitemap
+
 ```
 
 在站点myBlog/_config.yml中添加search字段，如下：
