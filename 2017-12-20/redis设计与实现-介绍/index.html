@@ -17,13 +17,13 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
   <meta name="description" content="简介 可基于内存的、也可以持久化的日志型的、key-value形式的非关系型数据库由来 是意大利的一家做实时统计系统的公司在使用mysql时，创始人Salvatore Sanfilippo发现mysql的性能非常低下。于2009年开发完成的redis数据库，并将该数据库开源。VMware公司从2010年赞助redis的开发。特点 读写性能：读110000&#x2F;s  写 80000&#x2F;s value支持的">
 <meta property="og:type" content="article">
 <meta property="og:title" content="redis设计与实现-介绍">
-<meta property="og:url" content="http://chenwj1103.github.io/2017-12-20/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E4%BB%8B%E7%BB%8D/index.html">
+<meta property="og:url" content="http://www.chenwj.cn/2017-12-20/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E4%BB%8B%E7%BB%8D/index.html">
 <meta property="og:site_name" content="茄子的博客">
 <meta property="og:description" content="简介 可基于内存的、也可以持久化的日志型的、key-value形式的非关系型数据库由来 是意大利的一家做实时统计系统的公司在使用mysql时，创始人Salvatore Sanfilippo发现mysql的性能非常低下。于2009年开发完成的redis数据库，并将该数据库开源。VMware公司从2010年赞助redis的开发。特点 读写性能：读110000&#x2F;s  写 80000&#x2F;s value支持的">
 <meta property="og:locale" content="zh_CN">
@@ -33,7 +33,7 @@
 <meta property="article:tag" content="redis设计与实现">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://chenwj1103.github.io/2017-12-20/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E4%BB%8B%E7%BB%8D/">
+<link rel="canonical" href="http://www.chenwj.cn/2017-12-20/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E4%BB%8B%E7%BB%8D/">
 
 
 <script id="page-configurations">
@@ -206,7 +206,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2017-12-20/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E4%BB%8B%E7%BB%8D/">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2017-12-20/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E4%BB%8B%E7%BB%8D/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/favicon.ico">

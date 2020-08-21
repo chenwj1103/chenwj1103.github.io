@@ -17,13 +17,13 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
   <meta name="description" content="文件系统1.文件系统其实就是组织文件的方法。linux支持多种文件系统，最常用的就是ext2  &#x2F;ext3linux系统都具有通用的结构，包括：超级快 i节点 数据块 目录块四个部分。ext3相对于ext2的优势时其支持日志功能。磁盘分区分为主分区和扩展分区，一块磁盘最多可以扩展4个主分区。磁盘分区完成后需要进行创建文件系统的操作，最后讲该分区挂载到系统中的某个挂载点才可以使用。  fdisk 创">
 <meta property="og:type" content="article">
 <meta property="og:title" content="linux入门-文件系统">
-<meta property="og:url" content="http://chenwj1103.github.io/2018-06-08/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:url" content="http://www.chenwj.cn/2018-06-08/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/index.html">
 <meta property="og:site_name" content="茄子的博客">
 <meta property="og:description" content="文件系统1.文件系统其实就是组织文件的方法。linux支持多种文件系统，最常用的就是ext2  &#x2F;ext3linux系统都具有通用的结构，包括：超级快 i节点 数据块 目录块四个部分。ext3相对于ext2的优势时其支持日志功能。磁盘分区分为主分区和扩展分区，一块磁盘最多可以扩展4个主分区。磁盘分区完成后需要进行创建文件系统的操作，最后讲该分区挂载到系统中的某个挂载点才可以使用。  fdisk 创">
 <meta property="og:locale" content="zh_CN">
@@ -33,7 +33,7 @@
 <meta property="article:tag" content="linux,文件系统">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://chenwj1103.github.io/2018-06-08/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+<link rel="canonical" href="http://www.chenwj.cn/2018-06-08/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
 
 
 <script id="page-configurations">
@@ -206,7 +206,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2018-06-08/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2018-06-08/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/favicon.ico">

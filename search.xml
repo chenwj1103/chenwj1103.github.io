@@ -428,28 +428,6 @@
       </tags>
   </entry>
   <entry>
-    <title>java数据结构和算法2-数组</title>
-    <url>/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%952-%E6%95%B0%E7%BB%84/</url>
-    <content><![CDATA[<h1 id="java数组介绍"><a href="#java数组介绍" class="headerlink" title="java数组介绍"></a>java数组介绍</h1><p>在Java中，数组是用来存放同一种数据类型的集合，注意只能存放同一种数据类型(Object类型数组除外)</p>
-<h2 id="数组的声明"><a href="#数组的声明" class="headerlink" title="数组的声明"></a>数组的声明</h2><p>数据类型[] 数组名称 = new 数据类型[数组长度];</p>
-<p>数据类型[] 数组名称 = {数组元素1，数组元素2，数组元素3…..}</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;&#x2F;声明数组1,声明一个长度为3，只能存放int类型的数据</span><br><span class="line">int [] myArray &#x3D; new int[3];</span><br><span class="line">&#x2F;&#x2F;声明数组2,声明一个数组元素为 1,2,3的int类型数组</span><br><span class="line">int [] myArray2 &#x3D; &#123;1,2,3&#125;;</span><br></pre></td></tr></table></figure>
-
-<p>数组的下标从0开始，但是length属性记录的是数组的长度。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;&#x2F;声明数组2,声明一个数组元素为 1,2,3的int类型数组，记着不是myArray2.length-1</span><br><span class="line">int [] myArray2 &#x3D; &#123;1,2,3&#125;;</span><br><span class="line">for(int i &#x3D; 0 ; i &lt; myArray2.length ; i++)&#123;</span><br><span class="line">    System.out.println(myArray2[i]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<h1 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h1><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">package com.chen.dataStructure;</span><br><span class="line"></span><br><span class="line">&#x2F;**</span><br><span class="line"> * @author :  chen weijie</span><br><span class="line"> * @Date: 2019-02-26 10:57 PM</span><br><span class="line"> *&#x2F;</span><br><span class="line">public class MyArray &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F;实现 增、删、查、迭代功能</span><br><span class="line"></span><br><span class="line">    private int [] intArray;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 数组的元素的个数</span><br><span class="line">     *&#x2F;</span><br><span class="line">    private int elems;</span><br><span class="line"></span><br><span class="line">    private int length;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 构造一个长度为50的数组</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public MyArray() &#123;</span><br><span class="line">        elems &#x3D; 0;</span><br><span class="line">        length &#x3D; 50;</span><br><span class="line">        intArray &#x3D; new int[length];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 获取数组的有效长度</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public int getSize()&#123;</span><br><span class="line">        return elems;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 遍历数组</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public void display() &#123;</span><br><span class="line">        for (int i &#x3D; 0; i &lt; elems; i++) &#123;</span><br><span class="line">            System.out.println(intArray[i] + &quot; &quot;);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 数组中添加元素</span><br><span class="line">     *</span><br><span class="line">     * @param value</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public boolean add(int value) &#123;</span><br><span class="line"></span><br><span class="line">        if (length &#x3D;&#x3D; elems) &#123;</span><br><span class="line">            return false;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            intArray[elems] &#x3D; value;</span><br><span class="line">            elems++;</span><br><span class="line">        &#125;</span><br><span class="line">        return true;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 根据下标获取元素</span><br><span class="line">     * @param i</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public int getElems(int i) &#123;</span><br><span class="line"></span><br><span class="line">        if (i &lt; 0 || i &gt; elems) &#123;</span><br><span class="line">            System.out.println(&quot;数组下标越界&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        return intArray[i];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 查找元素 查找的元素如果存在则返回下标值，如果不存在，返回 -1</span><br><span class="line">     *</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public int find(int value) &#123;</span><br><span class="line"></span><br><span class="line">        for (int i &#x3D; 0; i &lt; elems; i++) &#123;</span><br><span class="line">            if (value &#x3D;&#x3D; intArray[i]) &#123;</span><br><span class="line">                return i;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 如果要删除的值不存在，直接返回 false;否则返回true，删除成功</span><br><span class="line">     *</span><br><span class="line">     * @param value</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public boolean delete(int value) &#123;</span><br><span class="line"></span><br><span class="line">        int k &#x3D; find(value);</span><br><span class="line">        if (k &#x3D;&#x3D; -1) &#123;</span><br><span class="line">            return false;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            if (k &#x3D;&#x3D; elems - 1) &#123;</span><br><span class="line">                elems--;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                for (int i &#x3D; 0; i &lt; elems - 1; i++) &#123;</span><br><span class="line">                    intArray[elems] &#x3D; intArray[elems + 1];</span><br><span class="line">                &#125;</span><br><span class="line">                elems--;</span><br><span class="line">            &#125;</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 修改成功返回true，修改失败返回false</span><br><span class="line">     *</span><br><span class="line">     * @param oldValue</span><br><span class="line">     * @param newValue</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public boolean modify(int oldValue, int newValue) &#123;</span><br><span class="line">        int i &#x3D; find(oldValue);</span><br><span class="line">        if (i &#x3D;&#x3D; -1) &#123;</span><br><span class="line">            System.out.println(&quot;需要修改的数据不存在&quot;);</span><br><span class="line">            return false;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            intArray[i] &#x3D; newValue;</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line"></span><br><span class="line">        MyArray myArray &#x3D; new MyArray();</span><br><span class="line">        myArray.add(1);</span><br><span class="line">        myArray.add(12);</span><br><span class="line">        myArray.add(13);</span><br><span class="line">        myArray.add(14);</span><br><span class="line">        myArray.add(15);</span><br><span class="line"></span><br><span class="line">        myArray.display();</span><br><span class="line">        System.out.println(&quot;find 12:&quot; + myArray.find(12));</span><br><span class="line">        System.out.println(&quot;find 10:&quot; + myArray.find(10));</span><br><span class="line">        myArray.delete(10);</span><br><span class="line">        System.out.println(&quot;get i&#x3D;2 :&quot; + myArray.getElems(2));</span><br><span class="line">        System.out.println(&quot;size:&quot; + myArray.getSize());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<h1 id="数组的局限性"><a href="#数组的局限性" class="headerlink" title="数组的局限性"></a>数组的局限性</h1><p>1.插入快，对于无序数组，上面我们实现的数组就是无序的，即元素没有按照从大到小或者某个特定的顺序排列，只是按照插入的顺序排列。无序数组增加一个元素很简单，只需要在数组末尾添加元素即可，但是有序数组却不一定了，它需要在指定的位置插入<br>2.查找慢，当然如果根据下标来查找是很快的。但是通常我们都是根据元素值来查找，给定一个元素值，对于无序数组，我们需要从数组第一个元素开始遍历，直到找到那个元素。有序数组通过特定的算法查找的速度会比无需数组快，后面我们会讲各种排序算法。<br>3.删除慢，根据元素值删除，我们要先找到该元素所处的位置，然后将元素后面的值整体向前面移动一个位置。也需要比较多的时间。<br>4.数组一旦创建后，大小就固定了，不能动态扩展数组的元素个数。如果初始化你给一个很大的数组大小，那会白白浪费内存空间，如果给小了，后面数据个数增加了又添加不进去了。</p>
-]]></content>
-      <categories>
-        <category>数据结构和算法</category>
-      </categories>
-      <tags>
-        <tag>数组</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>java数据结构和算法10-树</title>
     <url>/2019-03-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9510-%E6%A0%91/</url>
     <content><![CDATA[<p>前面我们介绍数组的数据结构，我们知道对于有序数组，查找很快，并介绍可以通过二分法查找，但是想要在有序数组中插入一个数据项，就必须先找到插入数据项的位置，然后将所有插入位置后面的数据项全部向后移动一位，来给新数据腾出空间，平均来讲要移动N/2次，这是很费时的。同理，删除数据也是。</p>
@@ -538,6 +516,28 @@
       </categories>
       <tags>
         <tag>红黑树</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>java数据结构和算法2-数组</title>
+    <url>/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%952-%E6%95%B0%E7%BB%84/</url>
+    <content><![CDATA[<h1 id="java数组介绍"><a href="#java数组介绍" class="headerlink" title="java数组介绍"></a>java数组介绍</h1><p>在Java中，数组是用来存放同一种数据类型的集合，注意只能存放同一种数据类型(Object类型数组除外)</p>
+<h2 id="数组的声明"><a href="#数组的声明" class="headerlink" title="数组的声明"></a>数组的声明</h2><p>数据类型[] 数组名称 = new 数据类型[数组长度];</p>
+<p>数据类型[] 数组名称 = {数组元素1，数组元素2，数组元素3…..}</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;&#x2F;声明数组1,声明一个长度为3，只能存放int类型的数据</span><br><span class="line">int [] myArray &#x3D; new int[3];</span><br><span class="line">&#x2F;&#x2F;声明数组2,声明一个数组元素为 1,2,3的int类型数组</span><br><span class="line">int [] myArray2 &#x3D; &#123;1,2,3&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>数组的下标从0开始，但是length属性记录的是数组的长度。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">&#x2F;&#x2F;声明数组2,声明一个数组元素为 1,2,3的int类型数组，记着不是myArray2.length-1</span><br><span class="line">int [] myArray2 &#x3D; &#123;1,2,3&#125;;</span><br><span class="line">for(int i &#x3D; 0 ; i &lt; myArray2.length ; i++)&#123;</span><br><span class="line">    System.out.println(myArray2[i]);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h1 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h1><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">package com.chen.dataStructure;</span><br><span class="line"></span><br><span class="line">&#x2F;**</span><br><span class="line"> * @author :  chen weijie</span><br><span class="line"> * @Date: 2019-02-26 10:57 PM</span><br><span class="line"> *&#x2F;</span><br><span class="line">public class MyArray &#123;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F;实现 增、删、查、迭代功能</span><br><span class="line"></span><br><span class="line">    private int [] intArray;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 数组的元素的个数</span><br><span class="line">     *&#x2F;</span><br><span class="line">    private int elems;</span><br><span class="line"></span><br><span class="line">    private int length;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 构造一个长度为50的数组</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public MyArray() &#123;</span><br><span class="line">        elems &#x3D; 0;</span><br><span class="line">        length &#x3D; 50;</span><br><span class="line">        intArray &#x3D; new int[length];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 获取数组的有效长度</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public int getSize()&#123;</span><br><span class="line">        return elems;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 遍历数组</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public void display() &#123;</span><br><span class="line">        for (int i &#x3D; 0; i &lt; elems; i++) &#123;</span><br><span class="line">            System.out.println(intArray[i] + &quot; &quot;);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 数组中添加元素</span><br><span class="line">     *</span><br><span class="line">     * @param value</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public boolean add(int value) &#123;</span><br><span class="line"></span><br><span class="line">        if (length &#x3D;&#x3D; elems) &#123;</span><br><span class="line">            return false;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            intArray[elems] &#x3D; value;</span><br><span class="line">            elems++;</span><br><span class="line">        &#125;</span><br><span class="line">        return true;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 根据下标获取元素</span><br><span class="line">     * @param i</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public int getElems(int i) &#123;</span><br><span class="line"></span><br><span class="line">        if (i &lt; 0 || i &gt; elems) &#123;</span><br><span class="line">            System.out.println(&quot;数组下标越界&quot;);</span><br><span class="line">        &#125;</span><br><span class="line">        return intArray[i];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 查找元素 查找的元素如果存在则返回下标值，如果不存在，返回 -1</span><br><span class="line">     *</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public int find(int value) &#123;</span><br><span class="line"></span><br><span class="line">        for (int i &#x3D; 0; i &lt; elems; i++) &#123;</span><br><span class="line">            if (value &#x3D;&#x3D; intArray[i]) &#123;</span><br><span class="line">                return i;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return -1;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 如果要删除的值不存在，直接返回 false;否则返回true，删除成功</span><br><span class="line">     *</span><br><span class="line">     * @param value</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public boolean delete(int value) &#123;</span><br><span class="line"></span><br><span class="line">        int k &#x3D; find(value);</span><br><span class="line">        if (k &#x3D;&#x3D; -1) &#123;</span><br><span class="line">            return false;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            if (k &#x3D;&#x3D; elems - 1) &#123;</span><br><span class="line">                elems--;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                for (int i &#x3D; 0; i &lt; elems - 1; i++) &#123;</span><br><span class="line">                    intArray[elems] &#x3D; intArray[elems + 1];</span><br><span class="line">                &#125;</span><br><span class="line">                elems--;</span><br><span class="line">            &#125;</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 修改成功返回true，修改失败返回false</span><br><span class="line">     *</span><br><span class="line">     * @param oldValue</span><br><span class="line">     * @param newValue</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public boolean modify(int oldValue, int newValue) &#123;</span><br><span class="line">        int i &#x3D; find(oldValue);</span><br><span class="line">        if (i &#x3D;&#x3D; -1) &#123;</span><br><span class="line">            System.out.println(&quot;需要修改的数据不存在&quot;);</span><br><span class="line">            return false;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            intArray[i] &#x3D; newValue;</span><br><span class="line">            return true;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    public static void main(String[] args) &#123;</span><br><span class="line"></span><br><span class="line">        MyArray myArray &#x3D; new MyArray();</span><br><span class="line">        myArray.add(1);</span><br><span class="line">        myArray.add(12);</span><br><span class="line">        myArray.add(13);</span><br><span class="line">        myArray.add(14);</span><br><span class="line">        myArray.add(15);</span><br><span class="line"></span><br><span class="line">        myArray.display();</span><br><span class="line">        System.out.println(&quot;find 12:&quot; + myArray.find(12));</span><br><span class="line">        System.out.println(&quot;find 10:&quot; + myArray.find(10));</span><br><span class="line">        myArray.delete(10);</span><br><span class="line">        System.out.println(&quot;get i&#x3D;2 :&quot; + myArray.getElems(2));</span><br><span class="line">        System.out.println(&quot;size:&quot; + myArray.getSize());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h1 id="数组的局限性"><a href="#数组的局限性" class="headerlink" title="数组的局限性"></a>数组的局限性</h1><p>1.插入快，对于无序数组，上面我们实现的数组就是无序的，即元素没有按照从大到小或者某个特定的顺序排列，只是按照插入的顺序排列。无序数组增加一个元素很简单，只需要在数组末尾添加元素即可，但是有序数组却不一定了，它需要在指定的位置插入<br>2.查找慢，当然如果根据下标来查找是很快的。但是通常我们都是根据元素值来查找，给定一个元素值，对于无序数组，我们需要从数组第一个元素开始遍历，直到找到那个元素。有序数组通过特定的算法查找的速度会比无需数组快，后面我们会讲各种排序算法。<br>3.删除慢，根据元素值删除，我们要先找到该元素所处的位置，然后将元素后面的值整体向前面移动一个位置。也需要比较多的时间。<br>4.数组一旦创建后，大小就固定了，不能动态扩展数组的元素个数。如果初始化你给一个很大的数组大小，那会白白浪费内存空间，如果给小了，后面数据个数增加了又添加不进去了。</p>
+]]></content>
+      <categories>
+        <category>数据结构和算法</category>
+      </categories>
+      <tags>
+        <tag>数组</tag>
       </tags>
   </entry>
   <entry>
@@ -901,6 +901,74 @@ public static void main(String[] args) &#123;
       </tags>
   </entry>
   <entry>
+    <title>linux入门-文件管理</title>
+    <url>/2018-06-01/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86/</url>
+    <content><![CDATA[<h1 id="文件和目录管理"><a href="#文件和目录管理" class="headerlink" title="文件和目录管理"></a>文件和目录管理</h1><p>1.FHS(文件系统层次标准)</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">bin 常见的用户指令</span><br><span class="line">&#x2F;boot 内核和启动文件</span><br><span class="line">&#x2F;dev 设备文件</span><br><span class="line">&#x2F;etc 系统和服务的配置文件</span><br><span class="line">&#x2F;home 系统默认的普通用户的家目录</span><br><span class="line">&#x2F;lib 系统的函数库目录</span><br><span class="line">&#x2F;lost+found ext3文件系统需要的目录，用于磁盘检查</span><br><span class="line">&#x2F;mnt 系统加载文件系统时常用的挂载点</span><br><span class="line">&#x2F;opt 第三方软件安装目录</span><br><span class="line">&#x2F;proc 虚拟文件系统</span><br><span class="line">&#x2F;root root用户的家目录</span><br><span class="line">&#x2F;sbin 存放系统管理命令</span><br><span class="line">&#x2F;tmp 临时文件的存放目录</span><br><span class="line">&#x2F;usr 存放与用户直接相关的文件和目录</span><br><span class="line">&#x2F;media 系统用来挂载光驱等临时文件系统的挂载点</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>2.绝对路径</p>
+<p>  绝对路径是以‘/’开头的路径</p>
+<p>  pwd 查看当前文件所在的路径</p>
+<p>3.特殊目录</p>
+<p>每个目录下都有两个文件 （.）(..) 所有以.开始的文件都是隐藏文件 </p>
+<p>./代表当前目录 ../代表上层目录</p>
+<p>使用ls -la可以看到隐藏文件</p>
+<p>4.相对路径</p>
+<p>   cd ..进入上层目录   cd / 进入根目录</p>
+<p>5.文件的操作</p>
+<p>1）创建文件 touch test.txt  如果创建时该文件已经存在，则不会改变文件的内容，会改变文件的创建时间</p>
+<p>2）删除文件 rm  test.txt 然后会提示 输入y 确定删除，输入n 反悔</p>
+<p>3）移动文件 mv test.txt  /home/chen  后面带有两个参数 第一个时要被移动的文件 第二个参数要移动到的目录； 如果第二个参数是文件名字 则表示重命名操作</p>
+<p>4）查看文件 cat  test.txt    如果带一个参数cat -n test.txt  则会显示文件行号</p>
+<p>5）查看文件的头部 head -n 100 test.txt  显示文件的前100行</p>
+<p>6）查看文件的尾部 tail -n 100 test.txt   更重要的可以使用 tail -f test.txt 动态的追踪文件的尾部 </p>
+<p>7）dos格式的文本转换成unix格式的文本 dos2unix</p>
+<p>6.目录的相关操作</p>
+<ol>
+<li><p>进入目录 cd    change directory的缩写</p>
+</li>
+<li><p>创建目录 mkdir  test/      可以使用-p 参数一次创建一个目录和其子目录  mkdir  -p  dir1/dir2</p>
+</li>
+<li><p>删除目录 rm  如果目录不为空，则需要先删除目录中的文件。或者可以使用rm -r 删除 ，而rm -rf，则时强制无提示的删除目录以及目录下的文件</p>
+</li>
+</ol>
+<p>4)复制文件或者目录 cp 第一个参数是要复制的源文件，第二个是要复制到的目录或者复制后的文件名字。</p>
+<p>cp test.txt  test2.txt (改名字) </p>
+<p>cp  test.txt  /temp/ (复制到temp目录下不改名字)  </p>
+<p>cp  test.txt  /temp/test2.txt (复制到temp目录下改名字)</p>
+<p>复制目录则需要加 -r      cp  -r dir1  dir2</p>
+<p>5)文件的时间戳 使用touch命令可以修改文件的时间戳</p>
+<p>7.权限含义详解：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">drwxrwxr-x  2 zhuningning zhuningning 4096 Sep 11 23:21 dir1&#x2F;</span><br><span class="line"></span><br><span class="line">权限分为三种： r 代表可读，用4表示。 w 代表可写，用2表示。 x 代表可执行，用1表示。 </span><br><span class="line">-rw-r--r--  的解释如下, ：</span><br><span class="line">第一位的‘-’ 代表文件类型。 【&#39;d&#39; 代表目录，&#39;|&#39; 代表链接 ，‘-’代表普通文件】。</span><br><span class="line">第二位到第四位的‘rw-’，代表该文件的所有者对该文件的权限。</span><br><span class="line">第五位到第七位的‘r--’，代表该文件所在的组的其他用户对该文件的权限。</span><br><span class="line">第八位到第十位的‘r--’，代表其他组的用户对该文件的权限。</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line">chmod命令：使用例： chmod 760 目录&#x2F;文件，</span><br><span class="line">意思是 给该目录&#x2F;文件的所有者对该目录&#x2F;文件赋予rwx权限，给该目录&#x2F;文件所在的组的其他用户对该目录&#x2F;文件赋予rw-权限，给其他组的用户对该目录&#x2F;文件赋予---权限。</span><br><span class="line"> </span><br><span class="line">chmod 755 abc ：赋予abc权限rwxr-xr-x。</span><br><span class="line">chmod u&#x3D;rwx,g&#x3D;rx,o&#x3D;rx abc ：同上 u&#x3D;用户权限  g&#x3D;组权限 o&#x3D;不同组其他用户权限。</span><br><span class="line">chmod u-x,g+w abc ：给abc去除用户执行的权限，增加组写的权限。-表示去除  +表示增加</span><br><span class="line">chmod a+r abc ：给所有用户添加读的权限。</span><br><span class="line">chmod -R 754 abc ：给abd目录以及目录下的文件赋予权限754</span><br><span class="line"> </span><br><span class="line">改变拥有者（chown）和用户组（chgrp）命令：</span><br><span class="line">chown xiaoming abc ：改变abc的拥有者为xiaoming。</span><br><span class="line">chgrp root abc ：改变abc所属的组为root。</span><br><span class="line">chown root .&#x2F;abc ： 改变abc目录的所有者是root。</span><br><span class="line">chown -R root .&#x2F;abc ：改变abc目录及其下面的所有目录和文件的所有者是root。参数-R 是递归的意思。</span><br><span class="line"></span><br><span class="line">文件的隐藏属性：lsattr test.txt     chattr +a test.txt   表示文件不可以被删除，即使root权限也不可以；  chattr +i test.txt   表示文件不可以被删除&#x2F;修改，即使root权限也不可以</span><br><span class="line">suid权限 （u权限）普通用户可以使用root的身份来执行命令 chmod u+s  files 来授权</span><br><span class="line">sgid 权限（g权限） 组可以使用root身份来执行名  chmod g+s 来授权</span><br><span class="line">sticky权限（s权限），只能使用在目录上，设置了这种权限，任何用户可以创建和修改文件，但是只有文件的创建者和root用户可以删除自己的文件 chmod o+t  dir </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>8.系统创建文件和目录的默认权限</p>
+<p>umask（遮罩值） 对于uid大于 99的 umask为022 否则为002 </p>
+<p>文件的默认权限是 666 目录的权限是777 </p>
+<p>root用户的文件权限是644 目录权限是 755</p>
+<p>普通用户的文件权限是664 目录是775</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line">给用户组添加SGID权限:</span><br><span class="line">chmod g+s somefile</span><br><span class="line"></span><br><span class="line">给用户添加SUID权限</span><br><span class="line">chmod u+s somefile</span><br></pre></td></tr></table></figure>
+<p>Sticky权限还能用于设置在目录上,设置了这种权限的目录,任何用户都可以在该目录创建或者修改文件,但是该文件的创建者和root用户可以删除这个文件</p>
+<p>9.查看文件类型（可以显示文件的特殊属性）</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">file  &#x2F;tmp&#x2F;</span><br><span class="line">该目录是一个拥有sticky属性的目录  &#x2F;tmp&#x2F;: sticky, directory</span><br><span class="line"></span><br><span class="line">file  &#x2F;etc&#x2F;passwd</span><br><span class="line">该文件是一个ASCII编码的文本文件  &#x2F;etc&#x2F;passwd: ASCII text</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<ol start="10">
+<li>查找文件</li>
+</ol>
+<p>1)一般查找 find PATH -name FILENAME   //在某个路径下查找文件</p>
+<p>2）locate fileName  //该命令依赖于一个数据库，一般执行命令之前需要执行updatedb命令来更新数据库</p>
+<p>3）which/whereis  fileName  //该命令从系统的path变量所定义的目录中找到可执行文件的绝对路径 ，而whereis除此之外还可以还能找到其相关的二进制文件</p>
+<p>11.压缩文件</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">gzip和gunzip 用来压缩和解压单个文件</span><br><span class="line"></span><br><span class="line">tar不仅可以打包文件，还可以讲整个目录中的全部文件整合成一个包，整合包的同时还可以使用gzip进行压缩。可以使用.tar.gz作为后缀简写为.tgz</span><br><span class="line"></span><br><span class="line">tar -zcvf boot.tgz &#x2F;boot </span><br><span class="line"></span><br><span class="line">-z代表使用gzip进行压缩，-c表示创建压缩文件 -v表示是显示当前被压缩的文件，-f代表使用文件名字 也就是boot.tgz</span><br><span class="line"></span><br><span class="line">tar -zxvf  boot.tgz -C &#x2F;tmp  </span><br><span class="line"> -x表示解压的意思  -C 执行解压到&#x2F;tmp命令</span><br><span class="line"> </span><br><span class="line">bzip2 fileName  进行压缩</span><br><span class="line">-z参数进行强制压缩   -d进行强制解压</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>12 .查看文件的大小</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ll -h test.txt</span><br><span class="line">-rwxrwxrwx 1 zhuningning zhuningning 152M Feb  7  2017 crossover_16.1.0-1.deb*</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>linux</category>
+      </categories>
+      <tags>
+        <tag>linux文件管理</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>kafka源码剖析-快速入门</title>
     <url>/2018-04-05/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8/</url>
     <content><![CDATA[<h1 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h1><p>kafka是一种分布式的,基于发布订阅的消息系统.由scala语言编写的.由linkedin于2011年开源,2012年10月从apache孵化器毕业的顶级项目.</p>
@@ -1002,74 +1070,6 @@ public static void main(String[] args) &#123;
       </categories>
       <tags>
         <tag>kafka源码剖析</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>linux入门-文件管理</title>
-    <url>/2018-06-01/linux%E5%85%A5%E9%97%A8-%E6%96%87%E4%BB%B6%E7%AE%A1%E7%90%86/</url>
-    <content><![CDATA[<h1 id="文件和目录管理"><a href="#文件和目录管理" class="headerlink" title="文件和目录管理"></a>文件和目录管理</h1><p>1.FHS(文件系统层次标准)</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">bin 常见的用户指令</span><br><span class="line">&#x2F;boot 内核和启动文件</span><br><span class="line">&#x2F;dev 设备文件</span><br><span class="line">&#x2F;etc 系统和服务的配置文件</span><br><span class="line">&#x2F;home 系统默认的普通用户的家目录</span><br><span class="line">&#x2F;lib 系统的函数库目录</span><br><span class="line">&#x2F;lost+found ext3文件系统需要的目录，用于磁盘检查</span><br><span class="line">&#x2F;mnt 系统加载文件系统时常用的挂载点</span><br><span class="line">&#x2F;opt 第三方软件安装目录</span><br><span class="line">&#x2F;proc 虚拟文件系统</span><br><span class="line">&#x2F;root root用户的家目录</span><br><span class="line">&#x2F;sbin 存放系统管理命令</span><br><span class="line">&#x2F;tmp 临时文件的存放目录</span><br><span class="line">&#x2F;usr 存放与用户直接相关的文件和目录</span><br><span class="line">&#x2F;media 系统用来挂载光驱等临时文件系统的挂载点</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-<p>2.绝对路径</p>
-<p>  绝对路径是以‘/’开头的路径</p>
-<p>  pwd 查看当前文件所在的路径</p>
-<p>3.特殊目录</p>
-<p>每个目录下都有两个文件 （.）(..) 所有以.开始的文件都是隐藏文件 </p>
-<p>./代表当前目录 ../代表上层目录</p>
-<p>使用ls -la可以看到隐藏文件</p>
-<p>4.相对路径</p>
-<p>   cd ..进入上层目录   cd / 进入根目录</p>
-<p>5.文件的操作</p>
-<p>1）创建文件 touch test.txt  如果创建时该文件已经存在，则不会改变文件的内容，会改变文件的创建时间</p>
-<p>2）删除文件 rm  test.txt 然后会提示 输入y 确定删除，输入n 反悔</p>
-<p>3）移动文件 mv test.txt  /home/chen  后面带有两个参数 第一个时要被移动的文件 第二个参数要移动到的目录； 如果第二个参数是文件名字 则表示重命名操作</p>
-<p>4）查看文件 cat  test.txt    如果带一个参数cat -n test.txt  则会显示文件行号</p>
-<p>5）查看文件的头部 head -n 100 test.txt  显示文件的前100行</p>
-<p>6）查看文件的尾部 tail -n 100 test.txt   更重要的可以使用 tail -f test.txt 动态的追踪文件的尾部 </p>
-<p>7）dos格式的文本转换成unix格式的文本 dos2unix</p>
-<p>6.目录的相关操作</p>
-<ol>
-<li><p>进入目录 cd    change directory的缩写</p>
-</li>
-<li><p>创建目录 mkdir  test/      可以使用-p 参数一次创建一个目录和其子目录  mkdir  -p  dir1/dir2</p>
-</li>
-<li><p>删除目录 rm  如果目录不为空，则需要先删除目录中的文件。或者可以使用rm -r 删除 ，而rm -rf，则时强制无提示的删除目录以及目录下的文件</p>
-</li>
-</ol>
-<p>4)复制文件或者目录 cp 第一个参数是要复制的源文件，第二个是要复制到的目录或者复制后的文件名字。</p>
-<p>cp test.txt  test2.txt (改名字) </p>
-<p>cp  test.txt  /temp/ (复制到temp目录下不改名字)  </p>
-<p>cp  test.txt  /temp/test2.txt (复制到temp目录下改名字)</p>
-<p>复制目录则需要加 -r      cp  -r dir1  dir2</p>
-<p>5)文件的时间戳 使用touch命令可以修改文件的时间戳</p>
-<p>7.权限含义详解：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">drwxrwxr-x  2 zhuningning zhuningning 4096 Sep 11 23:21 dir1&#x2F;</span><br><span class="line"></span><br><span class="line">权限分为三种： r 代表可读，用4表示。 w 代表可写，用2表示。 x 代表可执行，用1表示。 </span><br><span class="line">-rw-r--r--  的解释如下, ：</span><br><span class="line">第一位的‘-’ 代表文件类型。 【&#39;d&#39; 代表目录，&#39;|&#39; 代表链接 ，‘-’代表普通文件】。</span><br><span class="line">第二位到第四位的‘rw-’，代表该文件的所有者对该文件的权限。</span><br><span class="line">第五位到第七位的‘r--’，代表该文件所在的组的其他用户对该文件的权限。</span><br><span class="line">第八位到第十位的‘r--’，代表其他组的用户对该文件的权限。</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line">chmod命令：使用例： chmod 760 目录&#x2F;文件，</span><br><span class="line">意思是 给该目录&#x2F;文件的所有者对该目录&#x2F;文件赋予rwx权限，给该目录&#x2F;文件所在的组的其他用户对该目录&#x2F;文件赋予rw-权限，给其他组的用户对该目录&#x2F;文件赋予---权限。</span><br><span class="line"> </span><br><span class="line">chmod 755 abc ：赋予abc权限rwxr-xr-x。</span><br><span class="line">chmod u&#x3D;rwx,g&#x3D;rx,o&#x3D;rx abc ：同上 u&#x3D;用户权限  g&#x3D;组权限 o&#x3D;不同组其他用户权限。</span><br><span class="line">chmod u-x,g+w abc ：给abc去除用户执行的权限，增加组写的权限。-表示去除  +表示增加</span><br><span class="line">chmod a+r abc ：给所有用户添加读的权限。</span><br><span class="line">chmod -R 754 abc ：给abd目录以及目录下的文件赋予权限754</span><br><span class="line"> </span><br><span class="line">改变拥有者（chown）和用户组（chgrp）命令：</span><br><span class="line">chown xiaoming abc ：改变abc的拥有者为xiaoming。</span><br><span class="line">chgrp root abc ：改变abc所属的组为root。</span><br><span class="line">chown root .&#x2F;abc ： 改变abc目录的所有者是root。</span><br><span class="line">chown -R root .&#x2F;abc ：改变abc目录及其下面的所有目录和文件的所有者是root。参数-R 是递归的意思。</span><br><span class="line"></span><br><span class="line">文件的隐藏属性：lsattr test.txt     chattr +a test.txt   表示文件不可以被删除，即使root权限也不可以；  chattr +i test.txt   表示文件不可以被删除&#x2F;修改，即使root权限也不可以</span><br><span class="line">suid权限 （u权限）普通用户可以使用root的身份来执行命令 chmod u+s  files 来授权</span><br><span class="line">sgid 权限（g权限） 组可以使用root身份来执行名  chmod g+s 来授权</span><br><span class="line">sticky权限（s权限），只能使用在目录上，设置了这种权限，任何用户可以创建和修改文件，但是只有文件的创建者和root用户可以删除自己的文件 chmod o+t  dir </span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>8.系统创建文件和目录的默认权限</p>
-<p>umask（遮罩值） 对于uid大于 99的 umask为022 否则为002 </p>
-<p>文件的默认权限是 666 目录的权限是777 </p>
-<p>root用户的文件权限是644 目录权限是 755</p>
-<p>普通用户的文件权限是664 目录是775</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line"></span><br><span class="line">给用户组添加SGID权限:</span><br><span class="line">chmod g+s somefile</span><br><span class="line"></span><br><span class="line">给用户添加SUID权限</span><br><span class="line">chmod u+s somefile</span><br></pre></td></tr></table></figure>
-<p>Sticky权限还能用于设置在目录上,设置了这种权限的目录,任何用户都可以在该目录创建或者修改文件,但是该文件的创建者和root用户可以删除这个文件</p>
-<p>9.查看文件类型（可以显示文件的特殊属性）</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">file  &#x2F;tmp&#x2F;</span><br><span class="line">该目录是一个拥有sticky属性的目录  &#x2F;tmp&#x2F;: sticky, directory</span><br><span class="line"></span><br><span class="line">file  &#x2F;etc&#x2F;passwd</span><br><span class="line">该文件是一个ASCII编码的文本文件  &#x2F;etc&#x2F;passwd: ASCII text</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-<ol start="10">
-<li>查找文件</li>
-</ol>
-<p>1)一般查找 find PATH -name FILENAME   //在某个路径下查找文件</p>
-<p>2）locate fileName  //该命令依赖于一个数据库，一般执行命令之前需要执行updatedb命令来更新数据库</p>
-<p>3）which/whereis  fileName  //该命令从系统的path变量所定义的目录中找到可执行文件的绝对路径 ，而whereis除此之外还可以还能找到其相关的二进制文件</p>
-<p>11.压缩文件</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">gzip和gunzip 用来压缩和解压单个文件</span><br><span class="line"></span><br><span class="line">tar不仅可以打包文件，还可以讲整个目录中的全部文件整合成一个包，整合包的同时还可以使用gzip进行压缩。可以使用.tar.gz作为后缀简写为.tgz</span><br><span class="line"></span><br><span class="line">tar -zcvf boot.tgz &#x2F;boot </span><br><span class="line"></span><br><span class="line">-z代表使用gzip进行压缩，-c表示创建压缩文件 -v表示是显示当前被压缩的文件，-f代表使用文件名字 也就是boot.tgz</span><br><span class="line"></span><br><span class="line">tar -zxvf  boot.tgz -C &#x2F;tmp  </span><br><span class="line"> -x表示解压的意思  -C 执行解压到&#x2F;tmp命令</span><br><span class="line"> </span><br><span class="line">bzip2 fileName  进行压缩</span><br><span class="line">-z参数进行强制压缩   -d进行强制解压</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
-<p>12 .查看文件的大小</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">ll -h test.txt</span><br><span class="line">-rwxrwxrwx 1 zhuningning zhuningning 152M Feb  7  2017 crossover_16.1.0-1.deb*</span><br></pre></td></tr></table></figure>
-]]></content>
-      <categories>
-        <category>linux</category>
-      </categories>
-      <tags>
-        <tag>linux文件管理</tag>
       </tags>
   </entry>
   <entry>

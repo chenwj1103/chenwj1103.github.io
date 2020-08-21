@@ -17,13 +17,13 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
   <meta name="description" content="SQL 约束（Constraints）概述SQL约束用于规定表中的数据规则，如果存在违反约束的数据行为，行为将会被约束终止； 约束可以在创建表时规定，或者在创建表之后通过alter table 语句。 如下: 1234567891011121314151617语法：CREATE TABLE table_name(column_name1 data_type(size) constraint_nam">
 <meta property="og:type" content="article">
 <meta property="og:title" content="《SQL基础》SQL学习指南学习笔记三 索引 事务 约束">
-<meta property="og:url" content="http://chenwj1103.github.io/2017-12-03/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%89%20%E7%B4%A2%E5%BC%95%20%E4%BA%8B%E5%8A%A1%20%E7%BA%A6%E6%9D%9F/index.html">
+<meta property="og:url" content="http://www.chenwj.cn/2017-12-03/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%89%20%E7%B4%A2%E5%BC%95%20%E4%BA%8B%E5%8A%A1%20%E7%BA%A6%E6%9D%9F/index.html">
 <meta property="og:site_name" content="茄子的博客">
 <meta property="og:description" content="SQL 约束（Constraints）概述SQL约束用于规定表中的数据规则，如果存在违反约束的数据行为，行为将会被约束终止； 约束可以在创建表时规定，或者在创建表之后通过alter table 语句。 如下: 1234567891011121314151617语法：CREATE TABLE table_name(column_name1 data_type(size) constraint_nam">
 <meta property="og:locale" content="zh_CN">
@@ -33,7 +33,7 @@
 <meta property="article:tag" content="sql 学习指南">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://chenwj1103.github.io/2017-12-03/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%89%20%E7%B4%A2%E5%BC%95%20%E4%BA%8B%E5%8A%A1%20%E7%BA%A6%E6%9D%9F/">
+<link rel="canonical" href="http://www.chenwj.cn/2017-12-03/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%89%20%E7%B4%A2%E5%BC%95%20%E4%BA%8B%E5%8A%A1%20%E7%BA%A6%E6%9D%9F/">
 
 
 <script id="page-configurations">
@@ -206,7 +206,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2017-12-03/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%89%20%E7%B4%A2%E5%BC%95%20%E4%BA%8B%E5%8A%A1%20%E7%BA%A6%E6%9D%9F/">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2017-12-03/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%89%20%E7%B4%A2%E5%BC%95%20%E4%BA%8B%E5%8A%A1%20%E7%BA%A6%E6%9D%9F/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/favicon.ico">

@@ -17,45 +17,45 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
   </script>
 
   <meta name="description" content="本篇将介绍redis数据库实现的相关操作.包括服务器保存数据库的方法,客户端切换数据库的方法,数据库保存键值对的方法,以及针对数据库的增删改查操作,还有键的过期时间和自动删除过期键的方法. 服务器中的数据库redis服务器存在一个redisServer结构中,其中db数组的每一个项都是一个redisDb结构. 如下为服务器结构  服务器初始化时,根据服务器的dbnum属性来决定创建多少个数据库.默">
 <meta property="og:type" content="article">
 <meta property="og:title" content="redis设计与实现-数据库">
-<meta property="og:url" content="http://chenwj1103.github.io/2018-01-10/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%95%B0%E6%8D%AE%E5%BA%93/index.html">
+<meta property="og:url" content="http://www.chenwj.cn/2018-01-10/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%95%B0%E6%8D%AE%E5%BA%93/index.html">
 <meta property="og:site_name" content="茄子的博客">
 <meta property="og:description" content="本篇将介绍redis数据库实现的相关操作.包括服务器保存数据库的方法,客户端切换数据库的方法,数据库保存键值对的方法,以及针对数据库的增删改查操作,还有键的过期时间和自动删除过期键的方法. 服务器中的数据库redis服务器存在一个redisServer结构中,其中db数组的每一个项都是一个redisDb结构. 如下为服务器结构  服务器初始化时,根据服务器的dbnum属性来决定创建多少个数据库.默">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/redisServer%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/redisServer%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%842.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AE%9E%E4%BE%8B.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/redisClient%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E7%9B%AE%E6%A0%87%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%BA1%E5%8F%B7%E6%95%B0%E6%8D%AE%E5%BA%93.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E9%94%AE%E7%A9%BA%E9%97%B4%E7%9A%84redisDb%E7%BB%93%E6%9E%84.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E6%95%B0%E6%8D%AE%E5%BA%93%E9%94%AE%E7%A9%BA%E9%97%B4%E7%9A%84%E4%BE%8B%E5%AD%90.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E6%B7%BB%E5%8A%A0%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%AF%B9%E8%B1%A1%E5%90%8E%E7%9A%84%E9%94%AE%E7%A9%BA%E9%97%B4.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E5%88%A0%E9%99%A4book%E9%94%AE%E5%90%8E%E7%9A%84%E9%94%AE%E7%A9%BA%E9%97%B4.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/set%E5%91%BD%E4%BB%A4%E6%9B%B4%E6%96%B0message%E9%94%AE.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/get%E5%91%BD%E4%BB%A4%E5%8F%96%E5%80%BC.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E5%B8%A6%E6%9C%89%E8%BF%87%E6%9C%9F%E5%AD%97%E5%85%B8%E7%9A%84%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BE%8B%E5%AD%90.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E6%89%A7%E8%A1%8Cpexireat%E5%91%BD%E4%BB%A4%E4%B9%8B%E5%90%8E%E7%9A%84%E6%95%B0%E6%8D%AE%E5%BA%93.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E6%89%A7%E8%A1%8Cpexpireat%E5%91%BD%E4%BB%A4%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E6%89%A7%E8%A1%8Cpersist%E5%90%8E%E7%9A%84%E6%95%B0%E6%8D%AE%E5%BA%93.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/pttl%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/pttl%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B01.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E8%BF%87%E6%9C%9F%E9%94%AE%E5%88%A4%E5%AE%9A%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E6%83%B0%E6%80%A7%E5%88%A0%E9%99%A4%E9%94%AE%E7%AD%96%E7%95%A5%E7%9A%84%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E5%AE%9A%E6%9C%9F%E5%88%A0%E9%99%A4%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B01.png">
-<meta property="og:image" content="http://chenwj1103.github.io/images/redis/database/%E5%AE%9A%E6%9C%9F%E5%88%A0%E9%99%A4%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B02.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/redisServer%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/redisServer%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%842.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AE%9E%E4%BE%8B.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/redisClient%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%9A%84%E7%9B%AE%E6%A0%87%E6%95%B0%E6%8D%AE%E5%BA%93%E4%B8%BA1%E5%8F%B7%E6%95%B0%E6%8D%AE%E5%BA%93.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E9%94%AE%E7%A9%BA%E9%97%B4%E7%9A%84redisDb%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E6%95%B0%E6%8D%AE%E5%BA%93%E9%94%AE%E7%A9%BA%E9%97%B4%E7%9A%84%E4%BE%8B%E5%AD%90.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E6%B7%BB%E5%8A%A0%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%AF%B9%E8%B1%A1%E5%90%8E%E7%9A%84%E9%94%AE%E7%A9%BA%E9%97%B4.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E5%88%A0%E9%99%A4book%E9%94%AE%E5%90%8E%E7%9A%84%E9%94%AE%E7%A9%BA%E9%97%B4.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/set%E5%91%BD%E4%BB%A4%E6%9B%B4%E6%96%B0message%E9%94%AE.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/get%E5%91%BD%E4%BB%A4%E5%8F%96%E5%80%BC.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E5%B8%A6%E6%9C%89%E8%BF%87%E6%9C%9F%E5%AD%97%E5%85%B8%E7%9A%84%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BE%8B%E5%AD%90.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E6%89%A7%E8%A1%8Cpexireat%E5%91%BD%E4%BB%A4%E4%B9%8B%E5%90%8E%E7%9A%84%E6%95%B0%E6%8D%AE%E5%BA%93.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E6%89%A7%E8%A1%8Cpexpireat%E5%91%BD%E4%BB%A4%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E6%89%A7%E8%A1%8Cpersist%E5%90%8E%E7%9A%84%E6%95%B0%E6%8D%AE%E5%BA%93.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/pttl%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/pttl%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B01.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E8%BF%87%E6%9C%9F%E9%94%AE%E5%88%A4%E5%AE%9A%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E6%83%B0%E6%80%A7%E5%88%A0%E9%99%A4%E9%94%AE%E7%AD%96%E7%95%A5%E7%9A%84%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E5%AE%9A%E6%9C%9F%E5%88%A0%E9%99%A4%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B01.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/database/%E5%AE%9A%E6%9C%9F%E5%88%A0%E9%99%A4%E7%9A%84%E4%BC%AA%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B02.png">
 <meta property="article:published_time" content="2018-01-10T15:35:54.000Z">
 <meta property="article:modified_time" content="2020-08-20T17:03:09.832Z">
 <meta property="article:author" content="陈伟杰">
 <meta property="article:tag" content="redis数据库">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://chenwj1103.github.io/images/redis/database/redisServer%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
+<meta name="twitter:image" content="http://www.chenwj.cn/images/redis/database/redisServer%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png">
 
-<link rel="canonical" href="http://chenwj1103.github.io/2018-01-10/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%95%B0%E6%8D%AE%E5%BA%93/">
+<link rel="canonical" href="http://www.chenwj.cn/2018-01-10/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%95%B0%E6%8D%AE%E5%BA%93/">
 
 
 <script id="page-configurations">
@@ -228,7 +228,7 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2018-01-10/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%95%B0%E6%8D%AE%E5%BA%93/">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2018-01-10/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%95%B0%E6%8D%AE%E5%BA%93/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/favicon.ico">

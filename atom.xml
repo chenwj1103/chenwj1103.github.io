@@ -3,11 +3,11 @@
   <title>茄子的博客</title>
   
   <subtitle>技术博客</subtitle>
-  <link href="http://chenwj1103.github.io/atom.xml" rel="self"/>
+  <link href="http://www.chenwj.cn/atom.xml" rel="self"/>
   
-  <link href="http://chenwj1103.github.io/"/>
+  <link href="http://www.chenwj.cn/"/>
   <updated>2020-08-20T17:03:09.816Z</updated>
-  <id>http://chenwj1103.github.io/</id>
+  <id>http://www.chenwj.cn/</id>
   
   <author>
     <name>陈伟杰</name>
@@ -18,8 +18,8 @@
   
   <entry>
     <title>DDD-领域驱动设计简介</title>
-    <link href="http://chenwj1103.github.io/2020-08-14/DDD-%E9%A2%86%E5%9F%9F%E9%A9%B1%E5%8A%A8%E8%AE%BE%E8%AE%A1%E7%AE%80%E4%BB%8B/"/>
-    <id>http://chenwj1103.github.io/2020-08-14/DDD-%E9%A2%86%E5%9F%9F%E9%A9%B1%E5%8A%A8%E8%AE%BE%E8%AE%A1%E7%AE%80%E4%BB%8B/</id>
+    <link href="http://www.chenwj.cn/2020-08-14/DDD-%E9%A2%86%E5%9F%9F%E9%A9%B1%E5%8A%A8%E8%AE%BE%E8%AE%A1%E7%AE%80%E4%BB%8B/"/>
+    <id>http://www.chenwj.cn/2020-08-14/DDD-%E9%A2%86%E5%9F%9F%E9%A9%B1%E5%8A%A8%E8%AE%BE%E8%AE%A1%E7%AE%80%E4%BB%8B/</id>
     <published>2020-08-14T09:05:52.000Z</published>
     <updated>2020-08-20T17:03:09.816Z</updated>
     
@@ -36,17 +36,17 @@
     
     
     
-    <category term="DDD" scheme="http://chenwj1103.github.io/categories/DDD/"/>
+    <category term="DDD" scheme="http://www.chenwj.cn/categories/DDD/"/>
     
     
-    <category term="DDD" scheme="http://chenwj1103.github.io/tags/DDD/"/>
+    <category term="DDD" scheme="http://www.chenwj.cn/tags/DDD/"/>
     
   </entry>
   
   <entry>
     <title>mysql实战-基础架构</title>
-    <link href="http://chenwj1103.github.io/2020-08-11/mysql%E5%AE%9E%E6%88%98-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84/"/>
-    <id>http://chenwj1103.github.io/2020-08-11/mysql%E5%AE%9E%E6%88%98-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84/</id>
+    <link href="http://www.chenwj.cn/2020-08-11/mysql%E5%AE%9E%E6%88%98-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84/"/>
+    <id>http://www.chenwj.cn/2020-08-11/mysql%E5%AE%9E%E6%88%98-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84/</id>
     <published>2020-08-11T02:53:58.000Z</published>
     <updated>2020-08-21T07:23:05.333Z</updated>
     
@@ -60,17 +60,17 @@
     
     
     
-    <category term="mysql" scheme="http://chenwj1103.github.io/categories/mysql/"/>
+    <category term="mysql" scheme="http://www.chenwj.cn/categories/mysql/"/>
     
     
-    <category term="mysql" scheme="http://chenwj1103.github.io/tags/mysql/"/>
+    <category term="mysql" scheme="http://www.chenwj.cn/tags/mysql/"/>
     
   </entry>
   
   <entry>
     <title>从根上了解mysql-innodb记录存储记录</title>
-    <link href="http://chenwj1103.github.io/2020-08-07/%E4%BB%8E%E6%A0%B9%E4%B8%8A%E4%BA%86%E8%A7%A3mysql-innodb%E8%AE%B0%E5%BD%95%E5%AD%98%E5%82%A8%E8%AE%B0%E5%BD%95/"/>
-    <id>http://chenwj1103.github.io/2020-08-07/%E4%BB%8E%E6%A0%B9%E4%B8%8A%E4%BA%86%E8%A7%A3mysql-innodb%E8%AE%B0%E5%BD%95%E5%AD%98%E5%82%A8%E8%AE%B0%E5%BD%95/</id>
+    <link href="http://www.chenwj.cn/2020-08-07/%E4%BB%8E%E6%A0%B9%E4%B8%8A%E4%BA%86%E8%A7%A3mysql-innodb%E8%AE%B0%E5%BD%95%E5%AD%98%E5%82%A8%E8%AE%B0%E5%BD%95/"/>
+    <id>http://www.chenwj.cn/2020-08-07/%E4%BB%8E%E6%A0%B9%E4%B8%8A%E4%BA%86%E8%A7%A3mysql-innodb%E8%AE%B0%E5%BD%95%E5%AD%98%E5%82%A8%E8%AE%B0%E5%BD%95/</id>
     <published>2020-08-07T03:50:12.000Z</published>
     <updated>2020-08-20T17:03:09.836Z</updated>
     
@@ -84,17 +84,17 @@
     
     
     
-    <category term="mysql" scheme="http://chenwj1103.github.io/categories/mysql/"/>
+    <category term="mysql" scheme="http://www.chenwj.cn/categories/mysql/"/>
     
     
-    <category term="mysql" scheme="http://chenwj1103.github.io/tags/mysql/"/>
+    <category term="mysql" scheme="http://www.chenwj.cn/tags/mysql/"/>
     
   </entry>
   
   <entry>
     <title>api网关介绍</title>
-    <link href="http://chenwj1103.github.io/2020-08-04/api%E7%BD%91%E5%85%B3%E4%BB%8B%E7%BB%8D/"/>
-    <id>http://chenwj1103.github.io/2020-08-04/api%E7%BD%91%E5%85%B3%E4%BB%8B%E7%BB%8D/</id>
+    <link href="http://www.chenwj.cn/2020-08-04/api%E7%BD%91%E5%85%B3%E4%BB%8B%E7%BB%8D/"/>
+    <id>http://www.chenwj.cn/2020-08-04/api%E7%BD%91%E5%85%B3%E4%BB%8B%E7%BB%8D/</id>
     <published>2020-08-03T16:20:09.000Z</published>
     <updated>2020-08-20T17:03:09.818Z</updated>
     
@@ -111,17 +111,17 @@
     
     
     
-    <category term="微服务" scheme="http://chenwj1103.github.io/categories/%E5%BE%AE%E6%9C%8D%E5%8A%A1/"/>
+    <category term="微服务" scheme="http://www.chenwj.cn/categories/%E5%BE%AE%E6%9C%8D%E5%8A%A1/"/>
     
     
-    <category term="网关" scheme="http://chenwj1103.github.io/tags/%E7%BD%91%E5%85%B3/"/>
+    <category term="网关" scheme="http://www.chenwj.cn/tags/%E7%BD%91%E5%85%B3/"/>
     
   </entry>
   
   <entry>
     <title>jvm调优</title>
-    <link href="http://chenwj1103.github.io/2020-06-10/jvm%E8%B0%83%E4%BC%98/"/>
-    <id>http://chenwj1103.github.io/2020-06-10/jvm%E8%B0%83%E4%BC%98/</id>
+    <link href="http://www.chenwj.cn/2020-06-10/jvm%E8%B0%83%E4%BC%98/"/>
+    <id>http://www.chenwj.cn/2020-06-10/jvm%E8%B0%83%E4%BC%98/</id>
     <published>2020-06-10T07:56:39.000Z</published>
     <updated>2020-08-20T17:03:09.823Z</updated>
     
@@ -136,17 +136,17 @@
     
     
     
-    <category term="jvm" scheme="http://chenwj1103.github.io/categories/jvm/"/>
+    <category term="jvm" scheme="http://www.chenwj.cn/categories/jvm/"/>
     
     
-    <category term="jvm" scheme="http://chenwj1103.github.io/tags/jvm/"/>
+    <category term="jvm" scheme="http://www.chenwj.cn/tags/jvm/"/>
     
   </entry>
   
   <entry>
     <title>高并发设计思想</title>
-    <link href="http://chenwj1103.github.io/2020-06-02/%E9%AB%98%E5%B9%B6%E5%8F%91%E8%AE%BE%E8%AE%A1%E6%80%9D%E6%83%B3/"/>
-    <id>http://chenwj1103.github.io/2020-06-02/%E9%AB%98%E5%B9%B6%E5%8F%91%E8%AE%BE%E8%AE%A1%E6%80%9D%E6%83%B3/</id>
+    <link href="http://www.chenwj.cn/2020-06-02/%E9%AB%98%E5%B9%B6%E5%8F%91%E8%AE%BE%E8%AE%A1%E6%80%9D%E6%83%B3/"/>
+    <id>http://www.chenwj.cn/2020-06-02/%E9%AB%98%E5%B9%B6%E5%8F%91%E8%AE%BE%E8%AE%A1%E6%80%9D%E6%83%B3/</id>
     <published>2020-06-02T06:25:13.000Z</published>
     <updated>2020-08-20T17:03:09.841Z</updated>
     
@@ -162,17 +162,17 @@
     
     
     
-    <category term="高并发" scheme="http://chenwj1103.github.io/categories/%E9%AB%98%E5%B9%B6%E5%8F%91/"/>
+    <category term="高并发" scheme="http://www.chenwj.cn/categories/%E9%AB%98%E5%B9%B6%E5%8F%91/"/>
     
     
-    <category term="高并发" scheme="http://chenwj1103.github.io/tags/%E9%AB%98%E5%B9%B6%E5%8F%91/"/>
+    <category term="高并发" scheme="http://www.chenwj.cn/tags/%E9%AB%98%E5%B9%B6%E5%8F%91/"/>
     
   </entry>
   
   <entry>
     <title>kafka源码剖析-server端</title>
-    <link href="http://chenwj1103.github.io/2019-09-13/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-server%E7%AB%AF/"/>
-    <id>http://chenwj1103.github.io/2019-09-13/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-server%E7%AB%AF/</id>
+    <link href="http://www.chenwj.cn/2019-09-13/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-server%E7%AB%AF/"/>
+    <id>http://www.chenwj.cn/2019-09-13/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-server%E7%AB%AF/</id>
     <published>2019-09-13T09:13:09.000Z</published>
     <updated>2020-08-20T17:03:09.824Z</updated>
     
@@ -187,17 +187,17 @@
     
     
     
-    <category term="kafka" scheme="http://chenwj1103.github.io/categories/kafka/"/>
+    <category term="kafka" scheme="http://www.chenwj.cn/categories/kafka/"/>
     
     
-    <category term="kafka server" scheme="http://chenwj1103.github.io/tags/kafka-server/"/>
+    <category term="kafka server" scheme="http://www.chenwj.cn/tags/kafka-server/"/>
     
   </entry>
   
   <entry>
     <title>kafka源码剖析-consumer</title>
-    <link href="http://chenwj1103.github.io/2019-09-12/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-consumer/"/>
-    <id>http://chenwj1103.github.io/2019-09-12/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-consumer/</id>
+    <link href="http://www.chenwj.cn/2019-09-12/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-consumer/"/>
+    <id>http://www.chenwj.cn/2019-09-12/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-consumer/</id>
     <published>2019-09-11T16:59:42.000Z</published>
     <updated>2020-08-20T17:03:09.823Z</updated>
     
@@ -211,17 +211,17 @@
     
     
     
-    <category term="kafka" scheme="http://chenwj1103.github.io/categories/kafka/"/>
+    <category term="kafka" scheme="http://www.chenwj.cn/categories/kafka/"/>
     
     
-    <category term="kafka consumer" scheme="http://chenwj1103.github.io/tags/kafka-consumer/"/>
+    <category term="kafka consumer" scheme="http://www.chenwj.cn/tags/kafka-consumer/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法-堆</title>
-    <link href="http://chenwj1103.github.io/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-%E5%A0%86/"/>
-    <id>http://chenwj1103.github.io/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-%E5%A0%86/</id>
+    <link href="http://www.chenwj.cn/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-%E5%A0%86/"/>
+    <id>http://www.chenwj.cn/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-%E5%A0%86/</id>
     <published>2019-04-13T18:00:13.000Z</published>
     <updated>2020-08-20T17:03:09.820Z</updated>
     
@@ -236,17 +236,17 @@
     
     
     
-    <category term="数据结构和算法" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
+    <category term="数据结构和算法" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
     
     
-    <category term="堆" scheme="http://chenwj1103.github.io/tags/%E5%A0%86/"/>
+    <category term="堆" scheme="http://www.chenwj.cn/tags/%E5%A0%86/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法-hash表</title>
-    <link href="http://chenwj1103.github.io/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-hash%E8%A1%A8/"/>
-    <id>http://chenwj1103.github.io/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-hash%E8%A1%A8/</id>
+    <link href="http://www.chenwj.cn/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-hash%E8%A1%A8/"/>
+    <id>http://www.chenwj.cn/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-hash%E8%A1%A8/</id>
     <published>2019-04-13T16:10:48.000Z</published>
     <updated>2020-08-20T17:03:09.819Z</updated>
     
@@ -260,17 +260,17 @@
     
     
     
-    <category term="数据结构" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
+    <category term="数据结构" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
     
     
-    <category term="hash表" scheme="http://chenwj1103.github.io/tags/hash%E8%A1%A8/"/>
+    <category term="hash表" scheme="http://www.chenwj.cn/tags/hash%E8%A1%A8/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法11-红黑树</title>
-    <link href="http://chenwj1103.github.io/2019-04-09/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9511-%E7%BA%A2%E9%BB%91%E6%A0%91/"/>
-    <id>http://chenwj1103.github.io/2019-04-09/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9511-%E7%BA%A2%E9%BB%91%E6%A0%91/</id>
+    <link href="http://www.chenwj.cn/2019-04-09/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9511-%E7%BA%A2%E9%BB%91%E6%A0%91/"/>
+    <id>http://www.chenwj.cn/2019-04-09/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9511-%E7%BA%A2%E9%BB%91%E6%A0%91/</id>
     <published>2019-04-09T15:36:35.000Z</published>
     <updated>2020-08-20T17:03:09.821Z</updated>
     
@@ -285,17 +285,17 @@
     
     
     
-    <category term="数据结构和算法" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
+    <category term="数据结构和算法" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
     
     
-    <category term="红黑树" scheme="http://chenwj1103.github.io/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/"/>
+    <category term="红黑树" scheme="http://www.chenwj.cn/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法10-树</title>
-    <link href="http://chenwj1103.github.io/2019-03-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9510-%E6%A0%91/"/>
-    <id>http://chenwj1103.github.io/2019-03-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9510-%E6%A0%91/</id>
+    <link href="http://www.chenwj.cn/2019-03-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9510-%E6%A0%91/"/>
+    <id>http://www.chenwj.cn/2019-03-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9510-%E6%A0%91/</id>
     <published>2019-03-26T15:25:02.000Z</published>
     <updated>2020-08-20T17:03:09.820Z</updated>
     
@@ -309,17 +309,17 @@
     
     
     
-    <category term="数据结构和算法" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
+    <category term="数据结构和算法" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
     
     
-    <category term="树" scheme="http://chenwj1103.github.io/tags/%E6%A0%91/"/>
+    <category term="树" scheme="http://www.chenwj.cn/tags/%E6%A0%91/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法8-递归</title>
-    <link href="http://chenwj1103.github.io/2019-03-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%958-%E9%80%92%E5%BD%92/"/>
-    <id>http://chenwj1103.github.io/2019-03-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%958-%E9%80%92%E5%BD%92/</id>
+    <link href="http://www.chenwj.cn/2019-03-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%958-%E9%80%92%E5%BD%92/"/>
+    <id>http://www.chenwj.cn/2019-03-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%958-%E9%80%92%E5%BD%92/</id>
     <published>2019-03-13T16:14:41.000Z</published>
     <updated>2020-08-20T17:03:09.823Z</updated>
     
@@ -334,17 +334,17 @@
     
     
     
-    <category term="递归" scheme="http://chenwj1103.github.io/categories/%E9%80%92%E5%BD%92/"/>
+    <category term="递归" scheme="http://www.chenwj.cn/categories/%E9%80%92%E5%BD%92/"/>
     
     
-    <category term="算法" scheme="http://chenwj1103.github.io/tags/%E7%AE%97%E6%B3%95/"/>
+    <category term="算法" scheme="http://www.chenwj.cn/tags/%E7%AE%97%E6%B3%95/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法5-队列</title>
-    <link href="http://chenwj1103.github.io/2019-03-06/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%955-%E9%98%9F%E5%88%97/"/>
-    <id>http://chenwj1103.github.io/2019-03-06/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%955-%E9%98%9F%E5%88%97/</id>
+    <link href="http://www.chenwj.cn/2019-03-06/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%955-%E9%98%9F%E5%88%97/"/>
+    <id>http://www.chenwj.cn/2019-03-06/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%955-%E9%98%9F%E5%88%97/</id>
     <published>2019-03-06T15:56:59.000Z</published>
     <updated>2020-08-20T17:03:09.822Z</updated>
     
@@ -358,17 +358,17 @@
     
     
     
-    <category term="数据结构" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
+    <category term="数据结构" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
     
     
-    <category term="队列" scheme="http://chenwj1103.github.io/tags/%E9%98%9F%E5%88%97/"/>
+    <category term="队列" scheme="http://www.chenwj.cn/tags/%E9%98%9F%E5%88%97/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法4-栈</title>
-    <link href="http://chenwj1103.github.io/2019-03-01/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%954-%E6%A0%88/"/>
-    <id>http://chenwj1103.github.io/2019-03-01/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%954-%E6%A0%88/</id>
+    <link href="http://www.chenwj.cn/2019-03-01/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%954-%E6%A0%88/"/>
+    <id>http://www.chenwj.cn/2019-03-01/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%954-%E6%A0%88/</id>
     <published>2019-02-28T17:09:50.000Z</published>
     <updated>2020-08-20T17:03:09.822Z</updated>
     
@@ -383,17 +383,17 @@
     
     
     
-    <category term="数据结构" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
+    <category term="数据结构" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
     
     
-    <category term="栈" scheme="http://chenwj1103.github.io/tags/%E6%A0%88/"/>
+    <category term="栈" scheme="http://www.chenwj.cn/tags/%E6%A0%88/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法3-冒泡、选择、插入排序算法</title>
-    <link href="http://chenwj1103.github.io/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%953-%E5%86%92%E6%B3%A1%E3%80%81%E9%80%89%E6%8B%A9%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/"/>
-    <id>http://chenwj1103.github.io/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%953-%E5%86%92%E6%B3%A1%E3%80%81%E9%80%89%E6%8B%A9%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/</id>
+    <link href="http://www.chenwj.cn/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%953-%E5%86%92%E6%B3%A1%E3%80%81%E9%80%89%E6%8B%A9%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/"/>
+    <id>http://www.chenwj.cn/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%953-%E5%86%92%E6%B3%A1%E3%80%81%E9%80%89%E6%8B%A9%E3%80%81%E6%8F%92%E5%85%A5%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/</id>
     <published>2019-02-26T15:31:13.000Z</published>
     <updated>2020-08-20T17:03:09.821Z</updated>
     
@@ -408,17 +408,17 @@
     
     
     
-    <category term="排序算法" scheme="http://chenwj1103.github.io/categories/%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/"/>
+    <category term="排序算法" scheme="http://www.chenwj.cn/categories/%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/"/>
     
     
-    <category term="排序算法" scheme="http://chenwj1103.github.io/tags/%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/"/>
+    <category term="排序算法" scheme="http://www.chenwj.cn/tags/%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法2-数组</title>
-    <link href="http://chenwj1103.github.io/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%952-%E6%95%B0%E7%BB%84/"/>
-    <id>http://chenwj1103.github.io/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%952-%E6%95%B0%E7%BB%84/</id>
+    <link href="http://www.chenwj.cn/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%952-%E6%95%B0%E7%BB%84/"/>
+    <id>http://www.chenwj.cn/2019-02-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%952-%E6%95%B0%E7%BB%84/</id>
     <published>2019-02-26T14:47:00.000Z</published>
     <updated>2020-08-20T17:03:09.821Z</updated>
     
@@ -432,17 +432,17 @@
     
     
     
-    <category term="数据结构和算法" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
+    <category term="数据结构和算法" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/"/>
     
     
-    <category term="数组" scheme="http://chenwj1103.github.io/tags/%E6%95%B0%E7%BB%84/"/>
+    <category term="数组" scheme="http://www.chenwj.cn/tags/%E6%95%B0%E7%BB%84/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法1-简介</title>
-    <link href="http://chenwj1103.github.io/2019-02-23/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%951-%E7%AE%80%E4%BB%8B/"/>
-    <id>http://chenwj1103.github.io/2019-02-23/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%951-%E7%AE%80%E4%BB%8B/</id>
+    <link href="http://www.chenwj.cn/2019-02-23/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%951-%E7%AE%80%E4%BB%8B/"/>
+    <id>http://www.chenwj.cn/2019-02-23/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%951-%E7%AE%80%E4%BB%8B/</id>
     <published>2019-02-22T17:12:17.000Z</published>
     <updated>2020-08-20T17:03:09.820Z</updated>
     
@@ -456,17 +456,17 @@
     
     
     
-    <category term="数据结构简介" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%AE%80%E4%BB%8B/"/>
+    <category term="数据结构简介" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E7%AE%80%E4%BB%8B/"/>
     
     
-    <category term="数据结构" scheme="http://chenwj1103.github.io/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
+    <category term="数据结构" scheme="http://www.chenwj.cn/tags/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"/>
     
   </entry>
   
   <entry>
     <title>java数据结构和算法7-链表</title>
-    <link href="http://chenwj1103.github.io/2019-02-22/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%957-%E9%93%BE%E8%A1%A8/"/>
-    <id>http://chenwj1103.github.io/2019-02-22/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%957-%E9%93%BE%E8%A1%A8/</id>
+    <link href="http://www.chenwj.cn/2019-02-22/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%957-%E9%93%BE%E8%A1%A8/"/>
+    <id>http://www.chenwj.cn/2019-02-22/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%957-%E9%93%BE%E8%A1%A8/</id>
     <published>2019-02-21T16:07:05.000Z</published>
     <updated>2020-08-20T17:03:09.823Z</updated>
     
@@ -481,17 +481,17 @@
     
     
     
-    <category term="数据结构与算法" scheme="http://chenwj1103.github.io/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/"/>
+    <category term="数据结构与算法" scheme="http://www.chenwj.cn/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E4%B8%8E%E7%AE%97%E6%B3%95/"/>
     
     
-    <category term="链表" scheme="http://chenwj1103.github.io/tags/%E9%93%BE%E8%A1%A8/"/>
+    <category term="链表" scheme="http://www.chenwj.cn/tags/%E9%93%BE%E8%A1%A8/"/>
     
   </entry>
   
   <entry>
     <title>高性能mysql-复制</title>
-    <link href="http://chenwj1103.github.io/2019-01-27/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%A4%8D%E5%88%B6/"/>
-    <id>http://chenwj1103.github.io/2019-01-27/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%A4%8D%E5%88%B6/</id>
+    <link href="http://www.chenwj.cn/2019-01-27/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%A4%8D%E5%88%B6/"/>
+    <id>http://www.chenwj.cn/2019-01-27/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%A4%8D%E5%88%B6/</id>
     <published>2019-01-27T15:54:46.000Z</published>
     <updated>2020-08-20T17:03:09.844Z</updated>
     
@@ -506,10 +506,10 @@
     
     
     
-    <category term="mysql" scheme="http://chenwj1103.github.io/categories/mysql/"/>
+    <category term="mysql" scheme="http://www.chenwj.cn/categories/mysql/"/>
     
     
-    <category term="mysql复制" scheme="http://chenwj1103.github.io/tags/mysql%E5%A4%8D%E5%88%B6/"/>
+    <category term="mysql复制" scheme="http://www.chenwj.cn/tags/mysql%E5%A4%8D%E5%88%B6/"/>
     
   </entry>
   
