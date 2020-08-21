@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="zookeeper在kafka中的作用 整理认识下kafka server端的架构图  网络层reactor模式 工作原理  1.首先创建serverSocketChannel对象并在selector上注册op_accept事件，serverSocketChannel负责监听指定端口上的连接请求；2.当客户端发起到服务端的网络连接时，服务端的selector监听到此op_accept事件，会触发">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kafka源码剖析-server端">
+<meta property="og:url" content="http://chenwj1103.github.io/2019-09-13/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-server%E7%AB%AF/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="zookeeper在kafka中的作用 整理认识下kafka server端的架构图  网络层reactor模式 工作原理  1.首先创建serverSocketChannel对象并在selector上注册op_accept事件，serverSocketChannel负责监听指定端口上的连接请求；2.当客户端发起到服务端的网络连接时，服务端的selector监听到此op_accept事件，会触发">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/kafka%E7%9A%84zookeeper%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/server.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/Nio-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/socketServer.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/serverSocket%E6%A0%B8%E5%BF%83%E5%AD%97%E6%AE%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/acceptorRun%E6%96%B9%E6%B3%95.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/processor%E4%B8%BB%E8%A6%81%E5%8F%82%E6%95%B0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/processorRun%E6%96%B9%E6%B3%95.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/RequestChannel.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/processor%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/Log%E7%9A%84%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E7%B4%A2%E5%BC%95-%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/fileMessageSet%E5%AF%B9%E8%B1%A1.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/Message%E7%B1%BB%E6%B6%88%E6%81%AF.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/offsetIndex.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/LogSegment.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/LogSegmentRead%E6%96%B9%E6%B3%95.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/Log%E4%BD%BF%E7%94%A8%E8%B7%B3%E8%A1%A8%E7%9A%84%E6%B5%81%E7%A8%8B.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/Log%E4%BD%BF%E7%94%A8%E8%B7%B3%E8%A1%A8%E7%9A%84%E6%B5%81%E7%A8%8B.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/logAppend%E6%96%B9%E6%B3%95%E5%A4%A7%E8%87%B4%E6%B5%81%E7%A8%8B.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E4%B8%89%E4%B8%AA%E5%91%A8%E6%9C%9F%E6%80%A7%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%8F%8F%E8%BF%B0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E6%97%A5%E5%BF%97%E5%8E%8B%E7%BC%A9%E5%8A%9F%E8%83%BD.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E6%97%A5%E5%BF%97%E5%8E%8B%E7%BC%A9-cleaner%E7%BA%BF%E7%A8%8B.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/LogManager%E5%88%9D%E5%A7%8B%E5%8C%96%E6%B5%81%E7%A8%8B.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%89%AF%E6%9C%AC%E7%9A%84%E6%A6%82%E5%BF%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E6%9C%AC%E5%9C%B0%E5%92%8C%E8%BF%9C%E7%A8%8B%E5%89%AF%E6%9C%AC.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%89%AF%E6%9C%AC%E7%9A%84%E6%9B%B4%E6%96%B0%E6%93%8D%E4%BD%9C.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/partition%E7%9A%84%E6%A0%B8%E5%BF%83%E5%AD%97%E6%AE%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%88%9B%E5%BB%BA%E5%89%AF%E6%9C%AC.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/makerLeader%E4%B8%AD%E7%94%A8%E5%88%B0%E7%9A%84%E5%8F%82%E6%95%B0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/makeLeader%E4%BB%A3%E7%A0%811.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/makeLeader%E4%BB%A3%E7%A0%812.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E6%B7%BB%E5%8A%A0ISR%E5%85%83%E7%B4%A0%E7%9A%84%E5%AE%9E%E7%8E%B0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%87%8F%E5%B0%91ISR%E5%85%83%E7%B4%A0%E7%9A%84%E5%AE%9E%E7%8E%B0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/checkEnoughReplicasReachOffset.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/ReplicaManager1.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/ReplicaManager2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/leaderAndIsrRequestAndResponse.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/becomeLeaderAndFollower.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/makerFollower.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/addFetcherForPartitions%E5%90%8C%E6%AD%A5%E5%89%AF%E6%9C%AC%E6%B6%88%E6%81%AF.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/AddPartitionsAndRemovePartitions.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%89%AF%E6%9C%AC%E8%AF%B7%E6%B1%82%E7%9A%84offset%E8%B6%85%E8%BF%87%E4%BA%86leader%E7%9A%84%E8%8C%83%E5%9B%B4.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%85%B3%E9%97%AD%E5%89%AF%E6%9C%AC.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/replicaManager%E4%B8%AD%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/metadataCache%E7%9A%84%E5%AD%97%E6%AE%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/getPartitionMetadata%E6%96%B9%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B01.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/getPartitionMetadata%E6%96%B9%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B02.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/MemberMetada%E7%9A%84%E4%B8%BB%E8%A6%81%E5%AD%97%E6%AE%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/GroupMetadata%E5%85%83%E6%95%B0%E6%8D%AE%E4%BF%A1%E6%81%AF.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E9%80%89%E6%8B%A9groupLeader.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/GroupMetadataManager%E5%AD%97%E6%AE%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/removeGroup%E6%96%B9%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E6%9F%A5%E6%89%BEgroupCoordinator.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/GroupCoordinator-offsetPartition-ConsumerGroup.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/loadGroupsAndOffsets.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/offsetFetchRequest%E5%A4%84%E7%90%86.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/groupCoordinator%E5%90%84%E4%B8%AA%E5%AD%97%E6%AE%B5%E7%9A%84%E5%90%AB%E4%B9%89.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/groupState%E7%9A%84%E5%9B%9B%E4%B8%AA%E7%8A%B6%E6%80%81.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/groupState%E7%9A%84%E5%9B%9B%E4%B8%AA%E7%8A%B6%E6%80%81%E8%BD%AC%E5%8C%96.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/JoinGroup%E6%96%B9%E6%B3%95.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/dojoinGroup%E6%96%B9%E6%B3%95.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/prepareRebalance%E6%96%B9%E6%B3%95.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/doSyncGroup%E6%93%8D%E4%BD%9C.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/commitOffsetRequest.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/commitOffsetRequest2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/leaveGroupRequest.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/kafkaController%E7%AE%80%E4%BB%8B.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/broker%E5%9C%A8zookeeper%E4%B8%AD%E7%9A%84%E5%AD%98%E5%82%A8%E4%BF%A1%E6%81%AF.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/kafkaController%E7%BB%84%E4%BB%B6.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/ControllerChannelManager%E7%AE%A1%E7%90%86brokerStateInfo.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/controllerBrokerRequestBatch%E7%9A%84%E6%A0%B8%E5%BF%83%E5%AD%97%E6%AE%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/partitionState%E5%8F%8A%E8%BD%AC%E6%8D%A2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2%E6%97%B6%E5%AE%8C%E6%88%90%E7%9A%84%E6%93%8D%E4%BD%9C.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/offlinePartitionLeaderSelector.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/SelectLeader1.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/SelectLeader2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/replicaState%E7%8A%B6%E6%80%81.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/replicaState%E7%8A%B6%E6%80%81%E5%8F%98%E5%8C%96%E6%89%80%E5%81%9A%E6%93%8D%E4%BD%9C.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/kafka%E5%AE%9E%E7%8E%B0%E7%9A%84zkListener%E6%8E%A5%E5%8F%A3.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/topicChangeListener%E5%AE%9E%E7%8E%B0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/deleteTopicChildChange.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/deleteTopicChildChange2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/partitionModificationsListener.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/brokerChildChange.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/onBrokerFailure.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/onBrokerFailureDemo1.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/onBrokerFailureDemo2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%89%AF%E6%9C%AC%E9%87%8D%E6%96%B0%E5%88%86%E9%85%8D%E7%9A%84%E6%AD%A5%E9%AA%A41.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%89%AF%E6%9C%AC%E9%87%8D%E6%96%B0%E5%88%86%E9%85%8D%E7%9A%84%E6%AD%A5%E9%AA%A42.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E5%89%AF%E6%9C%AC%E9%87%8D%E6%96%B0%E5%88%86%E9%85%8D%E7%9A%84%E6%AD%A5%E9%AA%A43.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/zookeeperLeaderElector.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/elect.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/onControllerFailover1.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/onControllerFailover2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/ControllerContext%E4%BB%8Ezookeeper%E4%B8%AD%E8%8E%B7%E5%8F%96%E4%BF%A1%E6%81%AF.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E4%BC%98%E5%85%88%E5%89%AF%E6%9C%AC.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E4%BC%98%E5%85%88%E9%80%89%E4%B8%BE1.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/%E4%BC%98%E5%85%88%E9%80%89%E4%B8%BE2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/kafka/server/controlledShutDownRequest.png">
+<meta property="article:published_time" content="2019-09-13T09:13:09.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.824Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="kafka server">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenwj1103.github.io/images/kafka/server/kafka%E7%9A%84zookeeper%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84.png">
+
+<link rel="canonical" href="http://chenwj1103.github.io/2019-09-13/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-server%E7%AB%AF/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>kafka源码剖析-server端 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2019-09-13/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-server%E7%AB%AF/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          kafka源码剖析-server端
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-09-13 17:13:09" itemprop="dateCreated datePublished" datetime="2019-09-13T17:13:09+08:00">2019-09-13</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/kafka/" itemprop="url" rel="index"><span itemprop="name">kafka</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><img src="/images/kafka/server/kafka%E7%9A%84zookeeper%E5%AD%98%E5%82%A8%E7%BB%93%E6%9E%84.png" alt="kafka的zookeeper存储结构"></p>
+<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/huazai007/articles/10990449.html">zookeeper在kafka中的作用</a></p>
+<p>整理认识下kafka server端的架构图</p>
+<p><img src="/images/kafka/server/server.png" alt="server"></p>
+<h1 id="网络层"><a href="#网络层" class="headerlink" title="网络层"></a>网络层</h1><h2 id="reactor模式"><a href="#reactor模式" class="headerlink" title="reactor模式"></a>reactor模式</h2><ul>
+<li>工作原理</li>
+</ul>
+<p>1.首先创建serverSocketChannel对象并在selector上注册op_accept事件，serverSocketChannel负责监听指定端口上的连接请求；<br>2.当客户端发起到服务端的网络连接时，服务端的selector监听到此op_accept事件，会触发selector来处理op_accept；<br>3.当acceptor接收到来自客户端的socket连接请求时会为这个连接创建响应的socketChannel，将socketChannel设计为非阻塞模式，并在selector上注册关注的IO事件，如OP_READ,OP_WRITE.此时客户端与服务端的socket连接正式完成。<br>4.当客户端通过上面建立的socket连接想服务端发送请求时，服务端的selector会监听到op_read事件，并触发执行响应的处理逻辑。当服务端向客户端写数据的时候，客户端的selector会监听到op_write事件，并处罚响应的处理逻辑。</p>
+<p>注意治理的所有事件处理逻辑都是在同一个线程中完成的。</p>
+<p>而kafka使用的事多线程 多个selector的设计实现的</p>
+<p><img src="/images/kafka/server/Nio-%E5%A4%9A%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B.png" alt="Nio-多线程模型"></p>
+<h2 id="socketServer"><a href="#socketServer" class="headerlink" title="socketServer"></a>socketServer</h2><p><img src="/images/kafka/server/socketServer.png" alt="socketServer"></p>
+<p><img src="/images/kafka/server/serverSocket%E6%A0%B8%E5%BF%83%E5%AD%97%E6%AE%B5.png" alt="serverSocket核心字段"></p>
+<h2 id="acceptor"><a href="#acceptor" class="headerlink" title="acceptor"></a>acceptor</h2><p>acceptor的主要功能是接收客户端建立连接的请求，创建socket连接并分配给processor处理。</p>
+<p>acceptor.run方法是acceptor的核心逻辑，其中完成了对OP_ACCEPT时间的处理。</p>
+<p><img src="/images/kafka/server/acceptorRun%E6%96%B9%E6%B3%95.png" alt="acceptorRun方法"></p>
+<h2 id="processor"><a href="#processor" class="headerlink" title="processor"></a>processor</h2><p>processor主要用于完成读取请求和写回响应的操作，processor不处理具体业务逻辑</p>
+<p><img src="/images/kafka/server/processor%E4%B8%BB%E8%A6%81%E5%8F%82%E6%95%B0.png" alt="processor主要参数"></p>
+<p>processor.run()方法实现了从网络连接上读取数据的功能。</p>
+<p><img src="/images/kafka/server/processorRun%E6%96%B9%E6%B3%95.png" alt="processorRun方法"></p>
+<h2 id="RequestChannel"><a href="#RequestChannel" class="headerlink" title="RequestChannel"></a>RequestChannel</h2><p><img src="/images/kafka/server/RequestChannel.png" alt="RequestChannel"></p>
+<p><img src="/images/kafka/server/processor%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82.png" alt="processor处理请求"></p>
+<h1 id="API层"><a href="#API层" class="headerlink" title="API层"></a>API层</h1><p>kafka的handler线程会取出processor线程，放入requestChannel的请求进行处理，并将产生的响应通过requestChanel传递给processor线程。handler线程属于kafka的api层。</p>
+<h2 id="kafkaRequestHandler"><a href="#kafkaRequestHandler" class="headerlink" title="kafkaRequestHandler"></a>kafkaRequestHandler</h2><p>kafkaRequestHandler的主要职责是从RequestChannel获取请求并调用kafkaApis.handle()方法处理请求</p>
+<h2 id="kafkaApis"><a href="#kafkaApis" class="headerlink" title="kafkaApis"></a>kafkaApis</h2><p>其是kafka服务器处理请求的入口类，它负责将kafkaRequestHandler传递过来的请求分发到不同的handl*处理方法中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;**</span><br><span class="line">   * Top-level method that handles all requests and multiplexes to the right api</span><br><span class="line">   *&#x2F;</span><br><span class="line">  def handle(request: RequestChannel.Request) &#123;</span><br><span class="line">    try &#123;</span><br><span class="line">      trace(&quot;Handling request:%s from connection %s;securityProtocol:%s,principal:%s&quot;.</span><br><span class="line">        format(request.requestDesc(true), request.connectionId, request.securityProtocol, request.session.principal))</span><br><span class="line">      ApiKeys.forId(request.requestId) match &#123;</span><br><span class="line">        case ApiKeys.PRODUCE &#x3D;&gt; handleProducerRequest(request)</span><br><span class="line">        case ApiKeys.FETCH &#x3D;&gt; handleFetchRequest(request)</span><br><span class="line">        case ApiKeys.LIST_OFFSETS &#x3D;&gt; handleOffsetRequest(request)</span><br><span class="line">        case ApiKeys.METADATA &#x3D;&gt; handleTopicMetadataRequest(request)</span><br><span class="line">        case ApiKeys.LEADER_AND_ISR &#x3D;&gt; handleLeaderAndIsrRequest(request)</span><br><span class="line">        case ApiKeys.STOP_REPLICA &#x3D;&gt; handleStopReplicaRequest(request)</span><br><span class="line">        case ApiKeys.UPDATE_METADATA_KEY &#x3D;&gt; handleUpdateMetadataRequest(request)</span><br><span class="line">        case ApiKeys.CONTROLLED_SHUTDOWN_KEY &#x3D;&gt; handleControlledShutdownRequest(request)</span><br><span class="line">        case ApiKeys.OFFSET_COMMIT &#x3D;&gt; handleOffsetCommitRequest(request)</span><br><span class="line">        case ApiKeys.OFFSET_FETCH &#x3D;&gt; handleOffsetFetchRequest(request)</span><br><span class="line">        case ApiKeys.GROUP_COORDINATOR &#x3D;&gt; handleGroupCoordinatorRequest(request)</span><br><span class="line">        case ApiKeys.JOIN_GROUP &#x3D;&gt; handleJoinGroupRequest(request)</span><br><span class="line">        case ApiKeys.HEARTBEAT &#x3D;&gt; handleHeartbeatRequest(request)</span><br><span class="line">        case ApiKeys.LEAVE_GROUP &#x3D;&gt; handleLeaveGroupRequest(request)</span><br><span class="line">        case ApiKeys.SYNC_GROUP &#x3D;&gt; handleSyncGroupRequest(request)</span><br><span class="line">        case ApiKeys.DESCRIBE_GROUPS &#x3D;&gt; handleDescribeGroupRequest(request)</span><br><span class="line">        case ApiKeys.LIST_GROUPS &#x3D;&gt; handleListGroupsRequest(request)</span><br><span class="line">        case ApiKeys.SASL_HANDSHAKE &#x3D;&gt; handleSaslHandshakeRequest(request)</span><br><span class="line">        case ApiKeys.API_VERSIONS &#x3D;&gt; handleApiVersionsRequest(request)</span><br><span class="line">        case ApiKeys.CREATE_TOPICS &#x3D;&gt; handleCreateTopicsRequest(request)</span><br><span class="line">        case ApiKeys.DELETE_TOPICS &#x3D;&gt; handleDeleteTopicsRequest(request)</span><br><span class="line">        case requestId &#x3D;&gt; throw new KafkaException(&quot;Unknown api code &quot; + requestId)</span><br><span class="line">      &#125;</span><br><span class="line">    &#125; catch &#123;</span><br><span class="line">      case e: Throwable &#x3D;&gt;</span><br><span class="line">        if (request.requestObj !&#x3D; null) &#123;</span><br><span class="line">          request.requestObj.handleError(e, requestChannel, request)</span><br><span class="line">          error(&quot;Error when handling request %s&quot;.format(request.requestObj), e)</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">          val response &#x3D; request.body.getErrorResponse(e)</span><br><span class="line"></span><br><span class="line">          &#x2F;* If request doesn&#39;t have a default error response, we just close the connection.</span><br><span class="line">             For example, when produce request has acks set to 0 *&#x2F;</span><br><span class="line">          if (response &#x3D;&#x3D; null)</span><br><span class="line">            requestChannel.closeConnection(request.processor, request)</span><br><span class="line">          else</span><br><span class="line">            requestChannel.sendResponse(new Response(request, response))</span><br><span class="line"></span><br><span class="line">          error(&quot;Error when handling request %s&quot;.format(request.body), e)</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; finally</span><br><span class="line">      request.apiLocalCompleteTimeMs &#x3D; time.milliseconds</span><br><span class="line">  &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h1 id="日志处理"><a href="#日志处理" class="headerlink" title="日志处理"></a>日志处理</h1><h2 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h2><p>kafka使用日志文件保存生产者发送的消息，每条消息使用offset值保存它在分区中的偏移量，offset是逻辑值。同一个分区中的消息是顺序写入的。</p>
+<p>分区的任一副本都会有响应的log文件；</p>
+<p>为了避免日志文件太大，在对应的磁盘上建一个目录，命名规则是topicName-partitionId,log与分区之间是一一对应的；</p>
+<p>kafka将log文件通过分段的方式分成多个logSegment文件，logSegment是一个逻辑上的概念，一个LogSegment文件对应磁盘上的一个日志文件和一个索引文件，其中日志文件记录消息，索引文件保存了消息的索引。日志文件大小达到一个阈值是，就会创建新的文件。命令规则是[baseOffset].log, 是第一条消息的offset。</p>
+<p><img src="/images/kafka/server/Log%E7%9A%84%E7%BB%93%E6%9E%84.png" alt="Log的结构"></p>
+<p>为了提高查询消息的效率，索引文件不并没有为每条消息建立索引项，而是使用稀疏索引方式为文件中的部分消息简历了索引</p>
+<p><img src="/images/kafka/server/%E7%B4%A2%E5%BC%95-%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6.png" alt="索引-日志文件"></p>
+<h2 id="fileMessageSet"><a href="#fileMessageSet" class="headerlink" title="fileMessageSet"></a>fileMessageSet</h2><p>fileMessageSet在磁盘上对应一个日志文件，它集成了MessageSet抽象类，它分为三部分：8个字节的offset值；4个字节的size表示messageData的大小；这两个部分组成LogOverhead,message data部分保存了消息的数据，逻辑上对应一个Message对象</p>
+<p><img src="/images/kafka/server/fileMessageSet%E5%AF%B9%E8%B1%A1.png" alt="fileMessageSet对象"></p>
+<p><img src="/images/kafka/server/Message%E7%B1%BB%E6%B6%88%E6%81%AF.png" alt="Message类消息"></p>
+<h2 id="ByteBufferMessageSet"><a href="#ByteBufferMessageSet" class="headerlink" title="ByteBufferMessageSet"></a>ByteBufferMessageSet</h2><p>常见的算法是数据量越大压缩率越高；kafka使用的压缩方式是将多个消息一起进行压缩；服务端之间进行传输数据是压缩状态，而消费者从服务端拉取的数据也是压缩的。</p>
+<h2 id="offsetIndex"><a href="#offsetIndex" class="headerlink" title="offsetIndex"></a>offsetIndex</h2><p><img src="/images/kafka/server/offsetIndex.png" alt="offsetIndex"> </p>
+<h2 id="LogSegment"><a href="#LogSegment" class="headerlink" title="LogSegment"></a>LogSegment</h2><p>LogSegment中封装了一个FileMessageSet和一个offsetIndex对象，提供日志文件和索引文件的读写功能以及其他辅助功能。</p>
+<p><img src="/images/kafka/server/LogSegment.png" alt="LogSegment"> </p>
+<h3 id="LogSegment的read方法"><a href="#LogSegment的read方法" class="headerlink" title="LogSegment的read方法"></a>LogSegment的read方法</h3><p>四个参数：</p>
+<ul>
+<li>startOffset:指定读取的其实消息的offset；</li>
+<li>maxOffset: 指定读取的结束的offset；</li>
+<li>maxSize: 指定读取的最大字节数；</li>
+<li>maxPosition: 指定读取的最大无力日志，默认是日志文件的大小；</li>
+</ul>
+<p>读取日志文件之前需要将startOffset和maxOffset转化为对应的无力地址才能使用；</p>
+<p><img src="/images/kafka/server/LogSegmentRead%E6%96%B9%E6%B3%95.png" alt="LogSegmentRead方法"> </p>
+<p><img src="/images/kafka/server/Log%E4%BD%BF%E7%94%A8%E8%B7%B3%E8%A1%A8%E7%9A%84%E6%B5%81%E7%A8%8B.png" alt="Log使用跳表的流程"> </p>
+<h2 id="Log"><a href="#Log" class="headerlink" title="Log"></a>Log</h2><p>Log是对多个LogSegment对象的顺序组合，形成一个逻辑的日志，为了实现快读定位LogSegment，log使用跳表来对LogSegment进行管理；</p>
+<p>jdk中有跳表的实现-concurrentSkipListMap，它是一个线程安全的实现；</p>
+<p>在log中将每个LogSegment的baseOffset作为key，LogSegment对象作为value，放入segment这个跳表结构中</p>
+<p><img src="/images/kafka/server/Log%E4%BD%BF%E7%94%A8%E8%B7%B3%E8%A1%A8%E7%9A%84%E6%B5%81%E7%A8%8B.png" alt="Log使用跳表的流程"> </p>
+<p><img src="/images/kafka/server/logAppend%E6%96%B9%E6%B3%95%E5%A4%A7%E8%87%B4%E6%B5%81%E7%A8%8B.png" alt="logAppend方法大致流程"> </p>
+<h2 id="LogManager"><a href="#LogManager" class="headerlink" title="LogManager"></a>LogManager</h2><ul>
+<li>简介</li>
+</ul>
+<p>在一个broker上的所有log都是由LogManager进行管理的，LogManager提供了加载Log、创建Log集合、删除Log集合、查询Log集合等功能，并且启动了3个周期性的后台任务以及多个线程分别是：log-flusher（日志刷写任务）、log-retention（日志保留）任务，检查点刷新任务以及cleaner线程（日志清理）；</p>
+<p><img src="/images/kafka/server/%E4%B8%89%E4%B8%AA%E5%91%A8%E6%9C%9F%E6%80%A7%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%8F%8F%E8%BF%B0.png" alt="三个周期性任务的描述"></p>
+<p><img src="/images/kafka/server/%E6%97%A5%E5%BF%97%E5%8E%8B%E7%BC%A9%E5%8A%9F%E8%83%BD.png" alt="日志压缩功能"></p>
+<p><img src="/images/kafka/server/%E6%97%A5%E5%BF%97%E5%8E%8B%E7%BC%A9-cleaner%E7%BA%BF%E7%A8%8B.png" alt="日志压缩-cleaner线程"></p>
+<p><img src="/images/kafka/server/LogManager%E5%88%9D%E5%A7%8B%E5%8C%96%E6%B5%81%E7%A8%8B.png" alt="LogManager初始化流程"></p>
+<h1 id="副本机制"><a href="#副本机制" class="headerlink" title="副本机制"></a>副本机制</h1><h2 id="副本简介"><a href="#副本简介" class="headerlink" title="副本简介"></a>副本简介</h2><p><img src="/images/kafka/server/%E5%89%AF%E6%9C%AC%E7%9A%84%E6%A6%82%E5%BF%B5.png" alt="副本的概念"></p>
+<ul>
+<li>本地和远程副本</li>
+</ul>
+<p><img src="/images/kafka/server/%E6%9C%AC%E5%9C%B0%E5%92%8C%E8%BF%9C%E7%A8%8B%E5%89%AF%E6%9C%AC.png" alt="本地和远程副本"></p>
+<p><img src="/images/kafka/server/%E5%89%AF%E6%9C%AC%E7%9A%84%E6%9B%B4%E6%96%B0%E6%93%8D%E4%BD%9C.png" alt="副本的更新操作"></p>
+<h2 id="分区"><a href="#分区" class="headerlink" title="分区"></a>分区</h2><p>服务端使用partition表示分区，partition负责管理每个副本对应的replica对象，进行leader副本的切换，isr集合的管理以及调用日志存储自行他完成写入消息</p>
+<p>partition的核心字段及主要方法：</p>
+<p><img src="/images/kafka/server/partition%E7%9A%84%E6%A0%B8%E5%BF%83%E5%AD%97%E6%AE%B5.png" alt="partition的核心字段"></p>
+<h3 id="创建副本"><a href="#创建副本" class="headerlink" title="创建副本"></a>创建副本</h3><p><img src="/images/kafka/server/%E5%88%9B%E5%BB%BA%E5%89%AF%E6%9C%AC.png" alt="创建副本"></p>
+<h3 id="副本将角色切换"><a href="#副本将角色切换" class="headerlink" title="副本将角色切换"></a>副本将角色切换</h3><p>broker会根据kafkaController发送的leaderAndISRRequest请求控制副本的leader和follower副本角色切换，Partition.makeLeader()是LeaderAndISRRequest中比较重要的环节之一。</p>
+<p><img src="/images/kafka/server/makerLeader%E4%B8%AD%E7%94%A8%E5%88%B0%E7%9A%84%E5%8F%82%E6%95%B0.png" alt="makerLeader中用到的参数"></p>
+<p><img src="/images/kafka/server/makeLeader%E4%BB%A3%E7%A0%811.png" alt="makeLeader代码1"></p>
+<p><img src="/images/kafka/server/makeLeader%E4%BB%A3%E7%A0%812.png" alt="makeLeader代码2"></p>
+<ul>
+<li>增加leader副本的HW</li>
+</ul>
+<p>当isr集合发生增减或是ISR集合中任一副本的LEO发生变化时，都会导致ISR集合中最小的LEO变大。获取ISR集合中最小的LEO作为新的HW，比较现在的HW和新的HW，取较小的作为HW；</p>
+<h3 id="ISR集合管理"><a href="#ISR集合管理" class="headerlink" title="ISR集合管理"></a>ISR集合管理</h3><p>partition除了对副本的leader和follower角色进行管理，还需要管理ISR集合。随着follower副本不断与leader副本进行消息同步，follower副本的leo会逐渐后移，并最终赶上leader副本的leo，最终该follower会进入ISR集合。</p>
+<p><img src="/images/kafka/server/%E6%B7%BB%E5%8A%A0ISR%E5%85%83%E7%B4%A0%E7%9A%84%E5%AE%9E%E7%8E%B0.png" alt="添加ISR元素的实现"></p>
+<p><img src="/images/kafka/server/%E5%87%8F%E5%B0%91ISR%E5%85%83%E7%B4%A0%E7%9A%84%E5%AE%9E%E7%8E%B0.png" alt="减少ISR元素的实现"></p>
+<p>SIR集合发生增减的时候，都会将最新的ISR集合保存在zookeeper中。</p>
+<h3 id="追加消息"><a href="#追加消息" class="headerlink" title="追加消息"></a>追加消息</h3><p>在分区中，只有leader副本能够处理读写请求，partition.appendMessagesToLeader()方法提供了向leader副本对应的Log中追加消息的功能。当isr集合中副本的数量小于配置的最小的限制，且生产者对可用性有较高的可用性，则不能支架消息，会产生一个NotEnoughReplicasException异常。</p>
+<p>否则追加消息到对应的leader副本，尝试增加leader的HW；</p>
+<h3 id="checkEnoughReplicasReachOffset"><a href="#checkEnoughReplicasReachOffset" class="headerlink" title="checkEnoughReplicasReachOffset"></a>checkEnoughReplicasReachOffset</h3><p><img src="/images/kafka/server/checkEnoughReplicasReachOffset.png" alt="checkEnoughReplicasReachOffset"></p>
+<h2 id="ReplicaManager-副本管理机制"><a href="#ReplicaManager-副本管理机制" class="headerlink" title="ReplicaManager 副本管理机制"></a>ReplicaManager 副本管理机制</h2><p><img src="/images/kafka/server/ReplicaManager1.png" alt="ReplicaManager1"></p>
+<p><img src="/images/kafka/server/ReplicaManager2.png" alt="ReplicaManager2"></p>
+<h3 id="副本角色切换"><a href="#副本角色切换" class="headerlink" title="副本角色切换"></a>副本角色切换</h3><p>在kafka集群中会选择一个broker称为kafkaController的leader，他负责管理整个kafka集群。controller leader根据partition的leader副本和follower副本的状态向对应的broker节点发送leaderAndIsrRequest，整个请求主要用于副本的角色切换。</p>
+<p><img src="/images/kafka/server/leaderAndIsrRequestAndResponse.png" alt="leaderAndIsrRequestAndResponse"></p>
+<p><img src="/images/kafka/server/becomeLeaderAndFollower.png" alt="becomeLeaderAndFollower"></p>
+<p><img src="/images/kafka/server/makerFollower.png" alt="makerFollower"></p>
+<p>updateFollowerLogReadResults()方法主要针对来自follower副本的fetchRequst多了异步处理。</p>
+<ul>
+<li>更新leader副本上维护的follower副本的各项状态，入LEO等；</li>
+<li>更新follower副本不断fetch的消息，最终追上leader副本，可能对ISR集合进行可扩张，同事将ISR集合的记录保存的zookeeper；</li>
+<li>检测是否需要后移leader副本的HW；</li>
+</ul>
+<h3 id="消息同步"><a href="#消息同步" class="headerlink" title="消息同步"></a>消息同步</h3><p>AbstractFetcherManager.addFetcherForPartitions()方法会让follower副本从指定的offset开始与leader副本进行同步。改方法的参数设计brokerAndInitialOffset类，他封装了broker的网络位置信息以及同步的其实offset。</p>
+<p><img src="/images/kafka/server/addFetcherForPartitions%E5%90%8C%E6%AD%A5%E5%89%AF%E6%9C%AC%E6%B6%88%E6%81%AF.png" alt="addFetcherForPartitions同步副本消息"></p>
+<p>removeFetcherForPartitions()方法会停止指定follower副本的同步操作；如果fetcher线程不在为任何分区的follower副本提供同步，则会被shutdown掉。</p>
+<p><img src="/images/kafka/server/AddPartitionsAndRemovePartitions.png" alt="AddPartitionsAndRemovePartitions"></p>
+<p><img src="/images/kafka/server/%E5%89%AF%E6%9C%AC%E8%AF%B7%E6%B1%82%E7%9A%84offset%E8%B6%85%E8%BF%87%E4%BA%86leader%E7%9A%84%E8%8C%83%E5%9B%B4.png" alt="副本请求的offset超过了leader的范围"></p>
+<h3 id="关闭副本"><a href="#关闭副本" class="headerlink" title="关闭副本"></a>关闭副本</h3><p><img src="/images/kafka/server/%E5%85%B3%E9%97%AD%E5%89%AF%E6%9C%AC.png" alt="关闭副本"></p>
+<h3 id="replicaManager中的定时任务"><a href="#replicaManager中的定时任务" class="headerlink" title="replicaManager中的定时任务"></a>replicaManager中的定时任务</h3><p><img src="/images/kafka/server/replicaManager%E4%B8%AD%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1.png" alt="replicaManager中的定时任务"></p>
+<h3 id="metadataCache"><a href="#metadataCache" class="headerlink" title="metadataCache"></a>metadataCache</h3><p>metadataCache是broker用来缓存整个集群中全部分区状态的组件，kafkaController通过向集群中的broker发送updateMetadataRequest来更新其metadataCache组件中的缓存的数据。</p>
+<p><img src="/images/kafka/server/metadataCache%E7%9A%84%E5%AD%97%E6%AE%B5.png" alt="metadataCache的字段"></p>
+<ul>
+<li>getPartitionMetadata方法的实现</li>
+</ul>
+<p><img src="/images/kafka/server/getPartitionMetadata%E6%96%B9%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B01.png" alt="getPartitionMetadata方法的实现1"></p>
+<p><img src="/images/kafka/server/getPartitionMetadata%E6%96%B9%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B02.png" alt="getPartitionMetadata方法的实现2"></p>
+<h1 id="groupCoordinator"><a href="#groupCoordinator" class="headerlink" title="groupCoordinator"></a>groupCoordinator</h1><p>每个broker上会实例化一个groupCoordinator对象，kafka按照consumer group名称将其分配给对应的groupCoordinator进行管理，每个groupCoordinator只负责管理consumer group的一个子集；</p>
+<h2 id="groupCoordinator的功能"><a href="#groupCoordinator的功能" class="headerlink" title="groupCoordinator的功能"></a>groupCoordinator的功能</h2><ul>
+<li>负责处理joinGroupRequest和syncGroupRequest完成对consumer group中分区的分配工作；</li>
+<li>通过GroupMetadataManager和内部的topic维护offset信息，即使出现消费者宕机的情况，也可以找回之前提交的offset；</li>
+<li>记录consumer group的相关信息，即使broker宕机导致consumer group 由新的groupCoordinator进行管理，新的groupCoordinator也可以知道consumer Group中的每个消费者负责处理那个分区等信息；</li>
+<li>通过心跳检测消费者的状态；</li>
+</ul>
+<p><img src="/images/kafka/server/MemberMetada%E7%9A%84%E4%B8%BB%E8%A6%81%E5%AD%97%E6%AE%B5.png" alt="MemberMetadata的主要字段"></p>
+<p><img src="/images/kafka/server/GroupMetadata%E5%85%83%E6%95%B0%E6%8D%AE%E4%BF%A1%E6%81%AF.png" alt="GroupMetadata元数据信息"></p>
+<p>groupMetadata提供了对其字段的操作，包括对members集合的增删，对state的切换，同事需要选择group leader；</p>
+<p><img src="/images/kafka/server/%E9%80%89%E6%8B%A9groupLeader.png" alt="选择groupLeader"></p>
+<h2 id="groupMetadataManager"><a href="#groupMetadataManager" class="headerlink" title="groupMetadataManager"></a>groupMetadataManager</h2><p>groupMetadataManager是groupCoordinator中负责管理 consumer group元数据以及对应offset信息的组件，groupMetadataManager底层使用offsets topic，以消息的形式存储 consumer group的groupMetadata信息以及其消息的每个每个分区的信息</p>
+<p><img src="/images/kafka/server/GroupMetadataManager%E5%AD%97%E6%AE%B5.png" alt="GroupMetadataManager字段"></p>
+<ul>
+<li>removeGroup方法的实现</li>
+</ul>
+<p><img src="/images/kafka/server/removeGroup%E6%96%B9%E6%B3%95%E7%9A%84%E5%AE%9E%E7%8E%B0.png" alt="removeGroup方法的实现"></p>
+<h3 id="查找groupCoordinator"><a href="#查找groupCoordinator" class="headerlink" title="查找groupCoordinator"></a>查找groupCoordinator</h3><p><img src="/images/kafka/server/%E6%9F%A5%E6%89%BEgroupCoordinator.png" alt="查找groupCoordinator"></p>
+<p><img src="/images/kafka/server/GroupCoordinator-offsetPartition-ConsumerGroup.png" alt="GroupCoordinator-offsetPartition-ConsumerGroup"></p>
+<h3 id="loadGroupsAndOffsets-方法"><a href="#loadGroupsAndOffsets-方法" class="headerlink" title="loadGroupsAndOffsets 方法"></a>loadGroupsAndOffsets 方法</h3><p><img src="/images/kafka/server/loadGroupsAndOffsets.png" alt="loadGroupsAndOffsets"></p>
+<h3 id="SyncGroupRequest相关处理"><a href="#SyncGroupRequest相关处理" class="headerlink" title="SyncGroupRequest相关处理"></a>SyncGroupRequest相关处理</h3><p>consumer group中的leader消费者通过SyncGroupRequest将分区的分配结果发送给GroupCoordinator,GroupCoordinator会根据此分配结果形成SyncGroupResponse返回给所有的消费者。</p>
+<h3 id="offsetFetchRequest和listGroupRequest处理"><a href="#offsetFetchRequest和listGroupRequest处理" class="headerlink" title="offsetFetchRequest和listGroupRequest处理"></a>offsetFetchRequest和listGroupRequest处理</h3><p><img src="/images/kafka/server/offsetFetchRequest%E5%A4%84%E7%90%86.png" alt="offsetFetchRequest处理"></p>
+<h2 id="groupCoordinator分析"><a href="#groupCoordinator分析" class="headerlink" title="groupCoordinator分析"></a>groupCoordinator分析</h2><p><img src="/images/kafka/server/groupCoordinator%E5%90%84%E4%B8%AA%E5%AD%97%E6%AE%B5%E7%9A%84%E5%90%AB%E4%B9%89.png" alt="groupCoordinator各个字段的含义"></p>
+<ul>
+<li>groupState字段的四个状态</li>
+</ul>
+<p><img src="/images/kafka/server/groupState%E7%9A%84%E5%9B%9B%E4%B8%AA%E7%8A%B6%E6%80%81.png" alt="groupState的四个状态"></p>
+<p><img src="/images/kafka/server/groupState%E7%9A%84%E5%9B%9B%E4%B8%AA%E7%8A%B6%E6%80%81%E8%BD%AC%E5%8C%96.png" alt="groupState的四个状态转化"></p>
+<ul>
+<li>joinGroup()方法</li>
+</ul>
+<p><img src="/images/kafka/server/JoinGroup%E6%96%B9%E6%B3%95.png" alt="JoinGroup方法"></p>
+<p><img src="/images/kafka/server/dojoinGroup%E6%96%B9%E6%B3%95.png" alt="dojoinGroup方法"></p>
+<p><img src="/images/kafka/server/prepareRebalance%E6%96%B9%E6%B3%95.png" alt="prepareRebalance方法"></p>
+<ul>
+<li>doSyncGroup()方法</li>
+</ul>
+<p><img src="/images/kafka/server/doSyncGroup%E6%93%8D%E4%BD%9C.png" alt="doSyncGroup操作"></p>
+<ul>
+<li>commitOffsetRequest()方法</li>
+</ul>
+<p><img src="/images/kafka/server/commitOffsetRequest.png" alt="commitOffsetRequest"></p>
+<p><img src="/images/kafka/server/commitOffsetRequest2.png" alt="commitOffsetRequest2"></p>
+<ul>
+<li>leaveGroupRequest</li>
+</ul>
+<p><img src="/images/kafka/server/leaveGroupRequest.png" alt="leaveGroupRequest"></p>
+<h1 id="kafkaController"><a href="#kafkaController" class="headerlink" title="kafkaController"></a>kafkaController</h1><h2 id="kafkaController简介"><a href="#kafkaController简介" class="headerlink" title="kafkaController简介"></a>kafkaController简介</h2><p><img src="/images/kafka/server/kafkaController%E7%AE%80%E4%BB%8B.png" alt="kafkaController简介"></p>
+<p><img src="/images/kafka/server/broker%E5%9C%A8zookeeper%E4%B8%AD%E7%9A%84%E5%AD%98%E5%82%A8%E4%BF%A1%E6%81%AF.png" alt="broker在zookeeper中的存储信息"></p>
+<p><img src="/images/kafka/server/kafkaController%E7%BB%84%E4%BB%B6.png" alt="kafkaController组件"></p>
+<p>kafkaController是zookeeper与kafka集群交互的桥梁，他一方面对zookeeper进行监听，其中包括broker写入zookeeper中的数据，也包括管理员使用脚本写入的数据;另一方面根据zookeeper中数据的变化做出相应的处理，通过Request请求控制每个broker，kafkaControlle也通过zookeeper提高了高可用的机制。</p>
+<h2 id="ControllerChannelManager"><a href="#ControllerChannelManager" class="headerlink" title="ControllerChannelManager"></a>ControllerChannelManager</h2><p>ControllerChannelManager主要管理broker之间的网络交互。controller只能发送leaderAndISRRequest、stopReplicaRequest、updateMetadataRequest三种请求；</p>
+<p>ControllerChannelManager的核心字段是brokerStatInfo，主要用于管理集群中各个broker对应的brokerStatInfo对象。</p>
+<p><img src="/images/kafka/server/ControllerChannelManager%E7%AE%A1%E7%90%86brokerStateInfo.png" alt="ControllerChannelManager管理brokerStateInfo"></p>
+<h2 id="controllerContext"><a href="#controllerContext" class="headerlink" title="controllerContext"></a>controllerContext</h2><p>controllerContext中维护了controller使用到的上下文信息，从其构造函数可以猜到controllerContext与zookeeper有密切的关系，可以看做两个之间的缓存</p>
+<h2 id="controllerBrokerRequestBatch"><a href="#controllerBrokerRequestBatch" class="headerlink" title="controllerBrokerRequestBatch"></a>controllerBrokerRequestBatch</h2><p>为了提高broker leader与集群中其它broker的通信效率，kafka controller使用controllerBrokerRequestBatch实现批量发送请求的功能。</p>
+<p><img src="/images/kafka/server/controllerBrokerRequestBatch%E7%9A%84%E6%A0%B8%E5%BF%83%E5%AD%97%E6%AE%B5.png" alt="controllerBrokerRequestBatch的核心字段"></p>
+<h2 id="partitionStateMachine"><a href="#partitionStateMachine" class="headerlink" title="partitionStateMachine"></a>partitionStateMachine</h2><p>partitionStateMachine是controller leader用于维护分区状态的状态机，分区的状态是通过partitionState接口定义的 </p>
+<p><img src="/images/kafka/server/partitionState%E5%8F%8A%E8%BD%AC%E6%8D%A2.png" alt="partitionState及转换"></p>
+<p><img src="/images/kafka/server/%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2%E6%97%B6%E5%AE%8C%E6%88%90%E7%9A%84%E6%93%8D%E4%BD%9C.png" alt="状态转换时完成的操作"></p>
+<p>selectLeaderForPartition()方法</p>
+<ul>
+<li>使用指定的partitionLeaderSelector()为分区选举新的leader副本；</li>
+<li>将leader副本和isr集合的信息写入zookeeper;</li>
+<li>更新context.partitionLeadershipInfo集合中缓存的leader副本、isr集合等信息；</li>
+<li>将上述确定的leader副本，isr集合，ar集合等信息添加到controllerBrokerRequestBatch，之后会封装成leaderAndIsrRequest发送相关的broker；</li>
+</ul>
+<h2 id="partitionLeaderSelector"><a href="#partitionLeaderSelector" class="headerlink" title="partitionLeaderSelector"></a>partitionLeaderSelector</h2><p>offlinePartitionLeaderSelector会根据currentLeaderAndIsr选举新的leader和isr集合；</p>
+<p><img src="/images/kafka/server/offlinePartitionLeaderSelector.png" alt="offlinePartitionLeaderSelector"></p>
+<ul>
+<li>选举的代码实现</li>
+</ul>
+<p><img src="/images/kafka/server/SelectLeader1.png" alt="SelectLeader1"></p>
+<p><img src="/images/kafka/server/SelectLeader2.png" alt="SelectLeader2"></p>
+<h2 id="ReplicaStateMachine"><a href="#ReplicaStateMachine" class="headerlink" title="ReplicaStateMachine"></a>ReplicaStateMachine</h2><p>ReplicaStateMachine是controller leader 用于维护副本状态的状态机，副本状态由replicaState接口表示</p>
+<p><img src="/images/kafka/server/replicaState%E7%8A%B6%E6%80%81.png" alt="replicaState状态"></p>
+<p><img src="/images/kafka/server/replicaState%E7%8A%B6%E6%80%81%E5%8F%98%E5%8C%96%E6%89%80%E5%81%9A%E6%93%8D%E4%BD%9C.png" alt="replicaState状态变化所做操作"></p>
+<h2 id="zookeeperListener"><a href="#zookeeperListener" class="headerlink" title="zookeeperListener"></a>zookeeperListener</h2><p>I0Itec-zkClient 是zookeeper的客户端工具</p>
+<h3 id="listener接口介绍"><a href="#listener接口介绍" class="headerlink" title="listener接口介绍"></a>listener接口介绍</h3><p>kafkaController 会通过zookeeper监控整个kafka集群的运行状态。具体实现是在zookeeper的指定节点添加listener，监听此节点中的数据变化或者其子节点的变化，从而触发响应的业务逻辑。</p>
+<p>IZKDataListener监听指定节点的数据变化；IZKChildListener监听指定节点的子节点变化；IZKStateListener监听zookeeper连接状态的变化；</p>
+<p><img src="/images/kafka/server/kafka%E5%AE%9E%E7%8E%B0%E7%9A%84zkListener%E6%8E%A5%E5%8F%A3.png" alt="kafka实现的zkListener接口"></p>
+<p><img src="/images/kafka/server/topicChangeListener%E5%AE%9E%E7%8E%B0.png" alt="topicChangeListener实现"></p>
+<p><img src="/images/kafka/server/deleteTopicChildChange.png" alt="deleteTopicChildChange"></p>
+<p><img src="/images/kafka/server/deleteTopicChildChange2.png" alt="deleteTopicChildChange2"></p>
+<p>partitionModificationListener 主要用于监听一个topic分区的变化</p>
+<p><img src="/images/kafka/server/partitionModificationsListener.png" alt="partitionModificationsListener"></p>
+<p>brokerChangeListener 主要负责处理broker的上线和故障下线，上线时会在“/brokers/ids”下创建临时节点，下线时会删除对应的临时节点。</p>
+<p><img src="/images/kafka/server/brokerChildChange.png" alt="brokerChildChange"></p>
+<p><img src="/images/kafka/server/onBrokerFailure.png" alt="onBrokerFailure"></p>
+<p><img src="/images/kafka/server/onBrokerFailureDemo1.png" alt="onBrokerFailureDemo1"></p>
+<p><img src="/images/kafka/server/onBrokerFailureDemo2.png" alt="onBrokerFailureDemo2"></p>
+<p>副本重新分配的listener</p>
+<p>partitionReassignedListener 监听zookeeper节点是 “/admin/reassign_partitions”,当管理人员通过ReassignPartitionsCommond名指定某些分区需要重新分配副本时，会将指定分区的信息写入改节点，从而触发partitionReassignedListener</p>
+<p><img src="/images/kafka/server/%E5%89%AF%E6%9C%AC%E9%87%8D%E6%96%B0%E5%88%86%E9%85%8D%E7%9A%84%E6%AD%A5%E9%AA%A41.png" alt="副本重新分配的步骤1"></p>
+<p><img src="/images/kafka/server/%E5%89%AF%E6%9C%AC%E9%87%8D%E6%96%B0%E5%88%86%E9%85%8D%E7%9A%84%E6%AD%A5%E9%AA%A42.png" alt="副本重新分配的步骤2"></p>
+<p><img src="/images/kafka/server/%E5%89%AF%E6%9C%AC%E9%87%8D%E6%96%B0%E5%88%86%E9%85%8D%E7%9A%84%E6%AD%A5%E9%AA%A43.png" alt="副本重新分配的步骤3"></p>
+<h2 id="kafkaController初始化与故障转移"><a href="#kafkaController初始化与故障转移" class="headerlink" title="kafkaController初始化与故障转移"></a>kafkaController初始化与故障转移</h2><p>kafkaController的启动和故障转移的过程与zookeeperLeaderElector有着密切的关系，</p>
+<p>zookeeperLeaderElector中有两个比较重要的字段，leaderId以及leaderChangeListener</p>
+<p><img src="/images/kafka/server/zookeeperLeaderElector.png" alt="zookeeperLeaderElector"></p>
+<h3 id="触发选举"><a href="#触发选举" class="headerlink" title="触发选举"></a>触发选举</h3><ul>
+<li>第一次启动的时候；</li>
+<li>leaderChangeListener监听到”/controller”节点中的数据被删除；</li>
+<li>zookeeper连接过期并重新连接之后；</li>
+</ul>
+<p><img src="/images/kafka/server/elect.png" alt="elect"></p>
+<h3 id="onControllerFailover"><a href="#onControllerFailover" class="headerlink" title="onControllerFailover"></a>onControllerFailover</h3><p>elect方法中调用onBecomingLeader()方法实际上还是onControllerFailover方法。当选举成功后，会完成一系列初始化操作。</p>
+<p><img src="/images/kafka/server/onControllerFailover1.png" alt="onControllerFailover1"></p>
+<p><img src="/images/kafka/server/onControllerFailover2.png" alt="onControllerFailover2"></p>
+<h3 id="ControllerContext-从zookeeper中获取的信息"><a href="#ControllerContext-从zookeeper中获取的信息" class="headerlink" title="ControllerContext 从zookeeper中获取的信息"></a>ControllerContext 从zookeeper中获取的信息</h3><p><img src="/images/kafka/server/ControllerContext%E4%BB%8Ezookeeper%E4%B8%AD%E8%8E%B7%E5%8F%96%E4%BF%A1%E6%81%AF.png" alt="ControllerContext从zookeeper中获取信息"></p>
+<h3 id="partition-rebalance"><a href="#partition-rebalance" class="headerlink" title="partition rebalance"></a>partition rebalance</h3><p><img src="/images/kafka/server/%E4%BC%98%E5%85%88%E5%89%AF%E6%9C%AC.png" alt="优先副本"></p>
+<h3 id="优先选举-checkAndTriggerPartitionRebalance"><a href="#优先选举-checkAndTriggerPartitionRebalance" class="headerlink" title="优先选举 checkAndTriggerPartitionRebalance"></a>优先选举 checkAndTriggerPartitionRebalance</h3><p><img src="/images/kafka/server/%E4%BC%98%E5%85%88%E9%80%89%E4%B8%BE1.png" alt="优先选举1"></p>
+<p><img src="/images/kafka/server/%E4%BC%98%E5%85%88%E9%80%89%E4%B8%BE2.png" alt="优先选举2"></p>
+<h2 id="处理controlledShutDownRequest"><a href="#处理controlledShutDownRequest" class="headerlink" title="处理controlledShutDownRequest"></a>处理controlledShutDownRequest</h2><p>更换硬件、系统升级可能需要管理broker，kafka提供了方法来管理,主动下线broker</p>
+<p><img src="/images/kafka/server/controlledShutDownRequest.png" alt="controlledShutDownRequest"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/kafka-server/" rel="tag"># kafka server</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019-09-12/kafka%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90-consumer/" rel="prev" title="kafka源码剖析-consumer">
+      <i class="fa fa-chevron-left"></i> kafka源码剖析-consumer
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020-06-02/%E9%AB%98%E5%B9%B6%E5%8F%91%E8%AE%BE%E8%AE%A1%E6%80%9D%E6%83%B3/" rel="next" title="高并发设计思想">
+      高并发设计思想 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BD%91%E7%BB%9C%E5%B1%82"><span class="nav-number">1.</span> <span class="nav-text">网络层</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#reactor%E6%A8%A1%E5%BC%8F"><span class="nav-number">1.1.</span> <span class="nav-text">reactor模式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#socketServer"><span class="nav-number">1.2.</span> <span class="nav-text">socketServer</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#acceptor"><span class="nav-number">1.3.</span> <span class="nav-text">acceptor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#processor"><span class="nav-number">1.4.</span> <span class="nav-text">processor</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RequestChannel"><span class="nav-number">1.5.</span> <span class="nav-text">RequestChannel</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#API%E5%B1%82"><span class="nav-number">2.</span> <span class="nav-text">API层</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#kafkaRequestHandler"><span class="nav-number">2.1.</span> <span class="nav-text">kafkaRequestHandler</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#kafkaApis"><span class="nav-number">2.2.</span> <span class="nav-text">kafkaApis</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%97%A5%E5%BF%97%E5%A4%84%E7%90%86"><span class="nav-number">3.</span> <span class="nav-text">日志处理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="nav-number">3.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#fileMessageSet"><span class="nav-number">3.2.</span> <span class="nav-text">fileMessageSet</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ByteBufferMessageSet"><span class="nav-number">3.3.</span> <span class="nav-text">ByteBufferMessageSet</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#offsetIndex"><span class="nav-number">3.4.</span> <span class="nav-text">offsetIndex</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LogSegment"><span class="nav-number">3.5.</span> <span class="nav-text">LogSegment</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#LogSegment%E7%9A%84read%E6%96%B9%E6%B3%95"><span class="nav-number">3.5.1.</span> <span class="nav-text">LogSegment的read方法</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Log"><span class="nav-number">3.6.</span> <span class="nav-text">Log</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LogManager"><span class="nav-number">3.7.</span> <span class="nav-text">LogManager</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%AF%E6%9C%AC%E6%9C%BA%E5%88%B6"><span class="nav-number">4.</span> <span class="nav-text">副本机制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%AF%E6%9C%AC%E7%AE%80%E4%BB%8B"><span class="nav-number">4.1.</span> <span class="nav-text">副本简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%86%E5%8C%BA"><span class="nav-number">4.2.</span> <span class="nav-text">分区</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E5%89%AF%E6%9C%AC"><span class="nav-number">4.2.1.</span> <span class="nav-text">创建副本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%AF%E6%9C%AC%E5%B0%86%E8%A7%92%E8%89%B2%E5%88%87%E6%8D%A2"><span class="nav-number">4.2.2.</span> <span class="nav-text">副本将角色切换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ISR%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86"><span class="nav-number">4.2.3.</span> <span class="nav-text">ISR集合管理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%BD%E5%8A%A0%E6%B6%88%E6%81%AF"><span class="nav-number">4.2.4.</span> <span class="nav-text">追加消息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#checkEnoughReplicasReachOffset"><span class="nav-number">4.2.5.</span> <span class="nav-text">checkEnoughReplicasReachOffset</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ReplicaManager-%E5%89%AF%E6%9C%AC%E7%AE%A1%E7%90%86%E6%9C%BA%E5%88%B6"><span class="nav-number">4.3.</span> <span class="nav-text">ReplicaManager 副本管理机制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%AF%E6%9C%AC%E8%A7%92%E8%89%B2%E5%88%87%E6%8D%A2"><span class="nav-number">4.3.1.</span> <span class="nav-text">副本角色切换</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B6%88%E6%81%AF%E5%90%8C%E6%AD%A5"><span class="nav-number">4.3.2.</span> <span class="nav-text">消息同步</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B3%E9%97%AD%E5%89%AF%E6%9C%AC"><span class="nav-number">4.3.3.</span> <span class="nav-text">关闭副本</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#replicaManager%E4%B8%AD%E7%9A%84%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1"><span class="nav-number">4.3.4.</span> <span class="nav-text">replicaManager中的定时任务</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#metadataCache"><span class="nav-number">4.3.5.</span> <span class="nav-text">metadataCache</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#groupCoordinator"><span class="nav-number">5.</span> <span class="nav-text">groupCoordinator</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#groupCoordinator%E7%9A%84%E5%8A%9F%E8%83%BD"><span class="nav-number">5.1.</span> <span class="nav-text">groupCoordinator的功能</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#groupMetadataManager"><span class="nav-number">5.2.</span> <span class="nav-text">groupMetadataManager</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9F%A5%E6%89%BEgroupCoordinator"><span class="nav-number">5.2.1.</span> <span class="nav-text">查找groupCoordinator</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#loadGroupsAndOffsets-%E6%96%B9%E6%B3%95"><span class="nav-number">5.2.2.</span> <span class="nav-text">loadGroupsAndOffsets 方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SyncGroupRequest%E7%9B%B8%E5%85%B3%E5%A4%84%E7%90%86"><span class="nav-number">5.2.3.</span> <span class="nav-text">SyncGroupRequest相关处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#offsetFetchRequest%E5%92%8ClistGroupRequest%E5%A4%84%E7%90%86"><span class="nav-number">5.2.4.</span> <span class="nav-text">offsetFetchRequest和listGroupRequest处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#groupCoordinator%E5%88%86%E6%9E%90"><span class="nav-number">5.3.</span> <span class="nav-text">groupCoordinator分析</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#kafkaController"><span class="nav-number">6.</span> <span class="nav-text">kafkaController</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#kafkaController%E7%AE%80%E4%BB%8B"><span class="nav-number">6.1.</span> <span class="nav-text">kafkaController简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ControllerChannelManager"><span class="nav-number">6.2.</span> <span class="nav-text">ControllerChannelManager</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#controllerContext"><span class="nav-number">6.3.</span> <span class="nav-text">controllerContext</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#controllerBrokerRequestBatch"><span class="nav-number">6.4.</span> <span class="nav-text">controllerBrokerRequestBatch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#partitionStateMachine"><span class="nav-number">6.5.</span> <span class="nav-text">partitionStateMachine</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#partitionLeaderSelector"><span class="nav-number">6.6.</span> <span class="nav-text">partitionLeaderSelector</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ReplicaStateMachine"><span class="nav-number">6.7.</span> <span class="nav-text">ReplicaStateMachine</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#zookeeperListener"><span class="nav-number">6.8.</span> <span class="nav-text">zookeeperListener</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#listener%E6%8E%A5%E5%8F%A3%E4%BB%8B%E7%BB%8D"><span class="nav-number">6.8.1.</span> <span class="nav-text">listener接口介绍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#kafkaController%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%8E%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB"><span class="nav-number">6.9.</span> <span class="nav-text">kafkaController初始化与故障转移</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A6%E5%8F%91%E9%80%89%E4%B8%BE"><span class="nav-number">6.9.1.</span> <span class="nav-text">触发选举</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#onControllerFailover"><span class="nav-number">6.9.2.</span> <span class="nav-text">onControllerFailover</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ControllerContext-%E4%BB%8Ezookeeper%E4%B8%AD%E8%8E%B7%E5%8F%96%E7%9A%84%E4%BF%A1%E6%81%AF"><span class="nav-number">6.9.3.</span> <span class="nav-text">ControllerContext 从zookeeper中获取的信息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#partition-rebalance"><span class="nav-number">6.9.4.</span> <span class="nav-text">partition rebalance</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%85%88%E9%80%89%E4%B8%BE-checkAndTriggerPartitionRebalance"><span class="nav-number">6.9.5.</span> <span class="nav-text">优先选举 checkAndTriggerPartitionRebalance</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%84%E7%90%86controlledShutDownRequest"><span class="nav-number">6.10.</span> <span class="nav-text">处理controlledShutDownRequest</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

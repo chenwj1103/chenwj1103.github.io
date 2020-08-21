@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="使用maven进行测试maven的重要职责就是自动运行单元测试，它通过maven-surefire-plugin与主流的单元测试框架junit4 以及testNG继承，并且能够自动生成丰富的结果报告。 maven-surefire-plugin 插件简介maven-surefire-plugin可以被称作测试运行器。生命周期阶段需要绑定到某个插件的目标才可以完成真正的工作。test阶段正是和mav">
+<meta property="og:type" content="article">
+<meta property="og:title" content="maven实战-2">
+<meta property="og:url" content="http://chenwj1103.github.io/2018-09-19/maven%E5%AE%9E%E6%88%98-2/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="使用maven进行测试maven的重要职责就是自动运行单元测试，它通过maven-surefire-plugin与主流的单元测试框架junit4 以及testNG继承，并且能够自动生成丰富的结果报告。 maven-surefire-plugin 插件简介maven-surefire-plugin可以被称作测试运行器。生命周期阶段需要绑定到某个插件的目标才可以完成真正的工作。test阶段正是和mav">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/war%E6%96%87%E4%BB%B6%E7%9A%84%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/maven%E7%9A%84web%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/%E5%BF%AB%E7%85%A7%E7%89%88%E6%9C%AC%E5%92%8C%E5%8F%91%E5%B8%83%E7%89%88%E6%9C%AC%E4%B9%8B%E9%97%B4%E7%9A%84%E8%BD%AC%E6%8D%A2.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/site%E7%AB%99%E7%82%B9%E6%96%87%E4%BB%B6.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/%E4%B8%B0%E5%AF%8C%E7%9A%84%E9%A1%B9%E7%9B%AE%E4%BF%A1%E6%81%AF.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/pom%E5%85%83%E7%B4%A01.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/pom%E5%85%83%E7%B4%A02.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/setting%E5%85%83%E7%B4%A0.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/%E5%B8%B8%E7%94%A8%E6%8F%92%E4%BB%B61.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/maven/%E5%B8%B8%E7%94%A8%E6%8F%92%E4%BB%B62.png">
+<meta property="article:published_time" content="2018-09-18T17:25:57.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.826Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="maven">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenwj1103.github.io/images/maven/war%E6%96%87%E4%BB%B6%E7%9A%84%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.png">
+
+<link rel="canonical" href="http://chenwj1103.github.io/2018-09-19/maven%E5%AE%9E%E6%88%98-2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>maven实战-2 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2018-09-19/maven%E5%AE%9E%E6%88%98-2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          maven实战-2
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-09-19 01:25:57" itemprop="dateCreated datePublished" datetime="2018-09-19T01:25:57+08:00">2018-09-19</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/maven/" itemprop="url" rel="index"><span itemprop="name">maven</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>19k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>17 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="使用maven进行测试"><a href="#使用maven进行测试" class="headerlink" title="使用maven进行测试"></a>使用maven进行测试</h1><p>maven的重要职责就是自动运行单元测试，它通过maven-surefire-plugin与主流的单元测试框架junit4 以及testNG继承，并且能够自动生成丰富的结果报告。</p>
+<h2 id="maven-surefire-plugin-插件简介"><a href="#maven-surefire-plugin-插件简介" class="headerlink" title="maven-surefire-plugin 插件简介"></a>maven-surefire-plugin 插件简介</h2><p>maven-surefire-plugin可以被称作测试运行器。生命周期阶段需要绑定到某个插件的目标才可以完成真正的工作。test阶段正是和maven-surefire-plugin的test目标绑定的。</p>
+<p>在默认情况下，maven-surefire-plugin插件的test目标会自动执行测试源码路径（src/test/java）下符合一组命名模式的测试类。</p>
+<p>1.<strong>/Test*.java 任何子目录下所有命名以Test开头的java类。<br>2.**/*Test.java 任何子目录下所有命名以Test结尾的Java类<br>3.</strong>/*TestCase.java 任何子目录下所有命名以testCase结尾的java类。</p>
+<p>只要按照以上模式命名，maven就可以自动运行他们。当然可以自定义测试类的模式。</p>
+<p>当然为了运行测试，maven需要自己引入测试框架的依赖。</p>
+<h2 id="跳过测试"><a href="#跳过测试" class="headerlink" title="跳过测试"></a>跳过测试</h2><p>以下配置可以跳过测试类</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">maven package -Dmaven.test.skip &#x3D;true</span><br></pre></td></tr></table></figure>
+
+<p>也可以采用配置的形式。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&lt;!-- 编译插件 --&gt;</span><br><span class="line">&lt;plugin&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;maven-compiler-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">    &lt;configuration&gt;</span><br><span class="line">        &lt;source&gt;1.7&lt;&#x2F;source&gt;</span><br><span class="line">        &lt;target&gt;1.7&lt;&#x2F;target&gt;</span><br><span class="line">        &lt;!-- 略过测试代码的编译，不推荐 --&gt;</span><br><span class="line">        &lt;skip&gt;true&lt;&#x2F;skip&gt;</span><br><span class="line">    &lt;&#x2F;configuration&gt;</span><br><span class="line">&lt;&#x2F;plugin&gt;</span><br><span class="line">&lt;!-- 单元测试插件 --&gt;</span><br><span class="line">&lt;plugin&gt;</span><br><span class="line">    &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;maven-surefire-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">    &lt;configuration&gt;</span><br><span class="line">        &lt;!-- 略过整个单元测试的执行，不推荐 --&gt;</span><br><span class="line">        &lt;skip&gt;true&lt;&#x2F;skip&gt;</span><br><span class="line">    &lt;&#x2F;configuration&gt;</span><br><span class="line">&lt;&#x2F;plugin&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="动态指定要运行的测试用例"><a href="#动态指定要运行的测试用例" class="headerlink" title="动态指定要运行的测试用例"></a>动态指定要运行的测试用例</h2><p>1.指定单个测试用例</p>
+<p>mvn test -Dtest =Randm*Test</p>
+<p>2.指定多个测试用例</p>
+<p>mvn test -Dtest = ATest,BTest</p>
+<h2 id="包含与排除测试用例"><a href="#包含与排除测试用例" class="headerlink" title="包含与排除测试用例"></a>包含与排除测试用例</h2><p>即使不符合测试类命名模式，即便如此，maven-surefire-plugin插件还是允许用户通过额外的配置自定义包含一些其它测试类，或者排除一些复合默认命名模式的测试类。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">&lt; plugin &gt;   </span><br><span class="line">    &lt; groupId &gt; org.apache.maven.plugins &lt;&#x2F; groupId &gt;   </span><br><span class="line">    &lt; artifactId &gt; maven-surefire-plugin &lt;&#x2F; artifactId &gt;   </span><br><span class="line">    &lt; version &gt; 2.5 &lt;&#x2F; version &gt;   </span><br><span class="line">    &lt; configuration &gt;   </span><br><span class="line">        &lt; includes &gt;   </span><br><span class="line">            &lt; include &gt; **&#x2F;*Tests.java &lt;&#x2F; include &gt;   </span><br><span class="line">        &lt;&#x2F; includes &gt;   </span><br><span class="line">        &lt; excludes &gt;   </span><br><span class="line">            &lt; exclude &gt; **&#x2F;*ServiceTest.java &lt;&#x2F; exclude &gt;   </span><br><span class="line">            &lt; exclude &gt; **&#x2F;TempDaoTest.java &lt;&#x2F; exclude &gt;   </span><br><span class="line">        &lt;&#x2F; excludes &gt;   </span><br><span class="line">    &lt;&#x2F; configuration &gt;   </span><br><span class="line">&lt;&#x2F; plugin &gt;  </span><br></pre></td></tr></table></figure>
+<h2 id="生成测试报告"><a href="#生成测试报告" class="headerlink" title="生成测试报告"></a>生成测试报告</h2><h3 id="基本测试报告"><a href="#基本测试报告" class="headerlink" title="基本测试报告"></a>基本测试报告</h3><p>默认情况下，maven-surefire-plugin会在项目的target/surefire-reports目录下生成两种格式的错误报告。</p>
+<p>– 简单文本格式——内容十分简单，可以看出哪个测试项出错。<br>– 与JUnit兼容的XML格式——XML格式已经成为了Java单元测试报告的事实标准，这个文件可以用其他的工具如IDE来查看。</p>
+<h3 id="测试覆盖率报告"><a href="#测试覆盖率报告" class="headerlink" title="测试覆盖率报告"></a>测试覆盖率报告</h3><p>测试覆盖率是衡量项目代码质量的一个重要的参考指标。Cobertura是一个优秀的开源 <a target="_blank" rel="noopener" href="http://cobertura.sourceforge.net/">测试覆盖率统计工具</a> ，Maven通过cobertura-maven-plugin与之集成，用户可 以使用简单的命令为Maven项目生成测试覆盖率报告。运行下面命令生成报告：</p>
+<p>mvn cobertura:cobertura </p>
+<p>在target/site/cobertura下的index.xml文件可以看到覆盖率报告。</p>
+<h3 id="重用测试代码"><a href="#重用测试代码" class="headerlink" title="重用测试代码"></a>重用测试代码</h3><p>当命令行运行mvn package的时候，Maven只会打包主代码及资源文件，并不会对测试代码打包。如果测试代码中有需要重用的代码，这时候就需要对测试代码打包了。<br>这时候需要配置maven-jar-plugin将测试类打包，如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&lt; plugin &gt;   </span><br><span class="line">    &lt; groupId &gt; org.apache.maven.plugins &lt;&#x2F; groupId &gt;   </span><br><span class="line">    &lt; artifactId &gt; maven-jar-plugin &lt;&#x2F; artifactId &gt;   </span><br><span class="line">    &lt; version &gt; 2.2 &lt;&#x2F; version &gt;   </span><br><span class="line">    &lt; executions &gt;   </span><br><span class="line">        &lt; execution &gt;   </span><br><span class="line">            &lt; goals &gt;   </span><br><span class="line">                &lt; goal &gt; test-jar &lt;&#x2F; goal &gt;   </span><br><span class="line">            &lt;&#x2F; goals &gt;   </span><br><span class="line">        &lt;&#x2F; execution &gt;   </span><br><span class="line">    &lt;&#x2F; executions &gt;   </span><br><span class="line">&lt;&#x2F; plugin &gt;  </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>maven-jar-plugin有两个目标，分别为jar和test-jar。这两个目标都默认绑定到default生命周期的package阶段运行，只是test-jar并没有在超级POM中配置，因此需要我们另外在pom中配置</p>
+<h1 id="使用maven构建web应用"><a href="#使用maven构建web应用" class="headerlink" title="使用maven构建web应用"></a>使用maven构建web应用</h1><p>之前我们讨论的都是JAR或者POM的Maven项目，但在现今的互联网时代，我们创建的大部分应用程序都是Web应用，基于Java的Web应用，其标准的打开方式是war。<br>WAR与JAR相似，只不过他可以包含更多的内容，如JSP文件、Servlet、Java类、web.xml配置文件、依赖JAR包、静态web资源（如HTML、CSS、JavaScript文件）等。一个典型的WAR文件会有如下目录结构：</p>
+<p><img src="/images/maven/war%E6%96%87%E4%BB%B6%E7%9A%84%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.png" alt="war文件的目录结构"></p>
+<p><img src="/images/maven/maven%E7%9A%84web%E7%9B%AE%E5%BD%95%E7%BB%93%E6%9E%84.png" alt="maven的web目录结构"></p>
+<p>1.需要注意的时war文件的目录下有一个lib文件夹，而maven项目下没有，这是因为maven项目的所有依赖都在pom文件中，只有在打包的时候才会被下载到lib文件夹中。</p>
+<p>2.web应用全部都是需要依赖servlet-api和jsp-api这两个几乎所有的web应用都要依赖的包。因为他们胡server和api的编写提供支持，但是他们的依赖范围是provided，表示他们不会被打包到war文件中，因为几乎所有的web容器都会提供这两个类库。</p>
+<p>3.在一些web项目中，读者可能胡看到finalName元素的配置，该元素用来标识项目生成主构件的名称，该元素默认值已经在超级pom中配置，值为${project.artifactId}-${project.version}.例如<finalName>course</finalName></p>
+<h2 id="使用jetty-maven-plugin-进行测试"><a href="#使用jetty-maven-plugin-进行测试" class="headerlink" title="使用jetty-maven-plugin 进行测试"></a>使用jetty-maven-plugin 进行测试</h2><p>传统的web测试要求我们编译/测试/打包及部署，这会消耗大量的时间，jetty-maven-plugin能够节约我们的时间，它可以周期性的减产项目内容，便跟后更新到内置的jetty web容器中，<br>jetty-maven-plugin默认就很好地支持了Maven的项目目录，通常情况下插件发现编译后的变化后，自动将其更新到Jetty容器，就可以直接测试Web页面了</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">&lt;build&gt;  </span><br><span class="line">    &lt;finalName&gt;rop-sample&lt;&#x2F;finalName&gt;  </span><br><span class="line">    &lt;plugins&gt;  </span><br><span class="line">        &lt;!-- jetty插件 --&gt;  </span><br><span class="line">        &lt;plugin&gt;  </span><br><span class="line">            &lt;groupId&gt;org.mortbay.jetty&lt;&#x2F;groupId&gt;  </span><br><span class="line">            &lt;artifactId&gt;maven-jetty-plugin&lt;&#x2F;artifactId&gt;  </span><br><span class="line">            &lt;version&gt;6.1.5&lt;&#x2F;version&gt;  </span><br><span class="line">            &lt;configuration&gt;  </span><br><span class="line">                &lt;webAppSourceDirectory&gt;src&#x2F;main&#x2F;webapp&lt;&#x2F;webAppSourceDirectory&gt;  </span><br><span class="line">                &lt;scanIntervalSeconds&gt;3&lt;&#x2F;scanIntervalSeconds&gt;  </span><br><span class="line">                &lt;contextPath&gt;&#x2F;&lt;&#x2F;contextPath&gt;  </span><br><span class="line">                &lt;connectors&gt;  </span><br><span class="line">                    &lt;connector implementation&#x3D;&quot;org.mortbay.jetty.nio.SelectChannelConnector&quot;&gt;  </span><br><span class="line">                        &lt;port&gt;8088&lt;&#x2F;port&gt;  </span><br><span class="line">                    &lt;&#x2F;connector&gt;  </span><br><span class="line">                &lt;&#x2F;connectors&gt;  </span><br><span class="line">            &lt;&#x2F;configuration&gt;  </span><br><span class="line">        &lt;&#x2F;plugin&gt;  </span><br><span class="line">    &lt;&#x2F;plugins&gt;  </span><br><span class="line">&lt;&#x2F;build&gt; </span><br><span class="line"></span><br><span class="line">其中scanIntervalSecond表示扫描项目变更的时间间隔，默认为0，表示不扫描。</span><br><span class="line">ContextPath表示项目的访问路径，比如此：http:&#x2F;&#x2F;localhost:8787&#x2F;test&#x2F;</span><br><span class="line"></span><br><span class="line">port表示绑定的端口号，默认监听的端口是8080。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/machao0903/article/details/73481095">intellij idea使用配置jetty maven 插件</a></p>
+<p><a target="_blank" rel="noopener" href="http://stamen.iteye.com/blog/1933452">解决maven热部署webapp下的文件不生效的问题</a></p>
+<p>下一步是启动jetty-maven-plugin，不过在此之前需要对settings.xml做个微小的改动，默认的只有org.apache.maven.plugins和org.codehaus.mojo两个groupId下的插件支持简化的命令行调用。</p>
+<p>mvn help:system 可以运行是因为groupId是org.apache.maven.plugins。而jetty-maven-plugin的插件不是，为了可以运行，需要在settings.xml中配置</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;settings&gt;</span><br><span class="line">  &lt;pluginGroups&gt;</span><br><span class="line">  &lt;pluginGroup&gt;</span><br><span class="line">    org.mortbay.jetty</span><br><span class="line">  &lt;&#x2F;pluginGroup&gt;</span><br><span class="line">   &lt;pluginGroups&gt;</span><br><span class="line">&lt;&#x2F;settings&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>然后可以使用 mvn:jetty:run命令，默认监听的是8080端口。</p>
+<h2 id="使用cargo实现自动化部署"><a href="#使用cargo实现自动化部署" class="headerlink" title="使用cargo实现自动化部署"></a>使用cargo实现自动化部署</h2><p>为了能在命令行中使用cargo，需要修改maven的settings.xml文件，修改如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;pluginGroup&gt;org.codehaus.cargo&lt;&#x2F;pluginGroup&gt;</span><br></pre></td></tr></table></figure>
+
+<p>Cargo支持两种本地部署的方式：standalone模式和existing模式。</p>
+<h3 id="standalone模式"><a href="#standalone模式" class="headerlink" title="standalone模式"></a>standalone模式</h3><p>Cargo会从web容器的安装目录中复制一份配置到用户指定的目录，然后在此基础上部署应用，每次重新构建的时候，这个目录会被清空，所有配置被重新 生成。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">    &lt;groupId&gt;org.codehaus.cargo&lt;&#x2F;groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;cargo-maven2-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.4.0&lt;&#x2F;version&gt;</span><br><span class="line">    &lt;configuration&gt;</span><br><span class="line">        &lt;container&gt;</span><br><span class="line">            &lt;containerId&gt;tomcat6x&lt;&#x2F;containerId&gt;</span><br><span class="line">            &lt;home&gt;D:\Program Files\apache-tomcat-6.0.18&lt;&#x2F;home&gt;</span><br><span class="line">        &lt;&#x2F;container&gt;</span><br><span class="line">        &lt;configuration&gt;</span><br><span class="line">            &lt;type&gt;standalone&lt;&#x2F;type&gt;</span><br><span class="line">            &lt;home&gt;$&#123;project.build.directory&#125;&#x2F;tomcat6x&lt;&#x2F;home&gt;</span><br><span class="line">             &lt;properties&gt; &lt;cargo.servlet.port&gt;8181&lt;&#x2F;cargo.servlet.port&gt; &lt;&#x2F;properties&gt;</span><br><span class="line">        &lt;&#x2F;configuration&gt;</span><br><span class="line">    &lt;&#x2F;configuration&gt;</span><br><span class="line">&lt;&#x2F;plugin&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>对参数做如下说明：</p>
+<p>containerId表示容器的类型。</p>
+<p>home表示容器的安装目录。</p>
+<p>configuration子元素type表示部署模式。</p>
+<p>configuration子元素home表示复制容器配置到什么位置，其中${project.build.directory}表示target目录。</p>
+<p>Cargo.servlet.port表示绑定的端口号，默认为8080。</p>
+<p>打开命令提示符，执行如下命令：</p>
+<p>mvn clean package 和 mvn cargo:run </p>
+<p>或者 mvn clean package cargo:run</p>
+<h3 id="existing模式"><a href="#existing模式" class="headerlink" title="existing模式"></a>existing模式</h3><p>在该模式中，指定现有的web容器配置目录，cargo会直接使用这些配置并将应用部署到对应的位置。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">&lt;plugin&gt;</span><br><span class="line">    &lt;groupId&gt;org.codehaus.cargo&lt;&#x2F;groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;cargo-maven2-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.4.0&lt;&#x2F;version&gt;</span><br><span class="line">    &lt;configuration&gt;</span><br><span class="line">        &lt;container&gt;</span><br><span class="line">                &lt;containerId&gt;tomcat6x&lt;&#x2F;containerId&gt;</span><br><span class="line">                &lt;home&gt;D:\Program Files\apache-tomcat-6.0.18&lt;&#x2F;home&gt;</span><br><span class="line">        &lt;&#x2F;container&gt;</span><br><span class="line">        &lt;configuration&gt;</span><br><span class="line">            &lt;type&gt;existing&lt;&#x2F;type&gt;</span><br><span class="line">            &lt;home&gt;D:\Program Files\apache-tomcat-6.0.18&lt;&#x2F;home&gt;</span><br><span class="line">        &lt;&#x2F;configuration&gt;    </span><br><span class="line">    &lt;&#x2F;configuration&gt;</span><br><span class="line">&lt;&#x2F;plugin&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>执行如下命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mvn clean compile</span><br><span class="line"></span><br><span class="line">mvn clean package</span><br><span class="line"></span><br><span class="line">mvn cargo:run</span><br></pre></td></tr></table></figure>
+<p>之后cargo会自动把war包部署到D:\Program Files\apache-tomcat-6.0.18\webapps中。</p>
+<h3 id="部署至远程web容器"><a href="#部署至远程web容器" class="headerlink" title="部署至远程web容器"></a>部署至远程web容器</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">&lt;plugin&gt;</span><br><span class="line">    &lt;groupId&gt;org.codehaus.cargo&lt;&#x2F;groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;cargo-maven2-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.4.0&lt;&#x2F;version&gt;</span><br><span class="line">    &lt;configuration&gt;</span><br><span class="line">        &lt;container&gt;</span><br><span class="line">            &lt;containerId&gt;tomcat6x&lt;&#x2F;containerId&gt;</span><br><span class="line">            &lt;type&gt;remote&lt;&#x2F;type&gt;</span><br><span class="line">        &lt;&#x2F;container&gt;</span><br><span class="line">        &lt;configuration&gt;</span><br><span class="line">            &lt;type&gt;runtime&lt;&#x2F;type&gt;</span><br><span class="line">            &lt;properties&gt;</span><br><span class="line">                &lt;cargo.remote.uri&gt;http:&#x2F;&#x2F;10.64.204.188:8080&#x2F;manager&lt;&#x2F;cargo.remote.uri&gt;</span><br><span class="line">                &lt;cargo.remote.username&gt;admin&lt;&#x2F;cargo.remote.username&gt;</span><br><span class="line">                &lt;cargo.remote.password&gt;admin&lt;&#x2F;cargo.remote.password&gt;</span><br><span class="line">            &lt;&#x2F;properties&gt;</span><br><span class="line">        &lt;&#x2F;configuration&gt;</span><br><span class="line">    &lt;&#x2F;configuration&gt;</span><br><span class="line">&lt;&#x2F;plugin&gt;</span><br><span class="line"></span><br><span class="line"> mvn clean compile</span><br><span class="line"> mvn clean package</span><br><span class="line"> mvn cargo:redeploy</span><br><span class="line"></span><br><span class="line">执行上述命令后可以从远程tomcat的控制台中就可以看到部署的项目信息。</span><br></pre></td></tr></table></figure>
+
+<h1 id="版本管理"><a href="#版本管理" class="headerlink" title="版本管理"></a>版本管理</h1><p>版本管理是指项目整体版本的演变过程管理，版本控制是指借助版本控制工具追踪代码的每一个变更。</p>
+<p>快照版本和发布版本。快照版本对应了项目的开发过程，往往对应了很长的时间，而正式版本对应了项目的发布，因此仅仅代表某个时刻项目的状态。</p>
+<p><img src="/images/maven/%E5%BF%AB%E7%85%A7%E7%89%88%E6%9C%AC%E5%92%8C%E5%8F%91%E5%B8%83%E7%89%88%E6%9C%AC%E4%B9%8B%E9%97%B4%E7%9A%84%E8%BD%AC%E6%8D%A2.png" alt="快照版本和发布版本之间的转换"></p>
+<p>满足发布版本的条件：</p>
+<p>1.所有自动化测试应当全部通过；<br>2.项目没有配置任何快照版本的依赖；<br>3.项目没有配置任何快照版本的插件；<br>4.项目所包含的代码已经全部提交到版本控制系统中。</p>
+<h2 id="版本号的定义"><a href="#版本号的定义" class="headerlink" title="版本号的定义"></a>版本号的定义</h2><p>&lt;主版本&gt;.&lt;次版本&gt;.&lt;增量版本&gt;-&lt;里程碑版本&gt;</p>
+<p>主版本表示项目的重大架构变更；</p>
+<p>次版本表示较大范围的功能增加和变化以及bug修复；</p>
+<p>增量版本表示重大bug的修复；（非必须）</p>
+<p>里程碑版本 与正式版本相比表示不是非常稳定，需要很多测试；（非必须）</p>
+<h2 id="主干-标签和分支"><a href="#主干-标签和分支" class="headerlink" title="主干 标签和分支"></a>主干 标签和分支</h2><p>主干表示项目开发代码的主体；分支表示从主干的某个点分离出来的代码拷贝；tag表示主干或者分支的某个点的状态，表示项目的稳定状态，通常时发布状态。</p>
+<h2 id="自动化版本发布"><a href="#自动化版本发布" class="headerlink" title="自动化版本发布"></a>自动化版本发布</h2><p>流程自动化。maven release plugin提供了这样的功能。主要有三个目标</p>
+<p>1.release：prepare 准备版本发布，一次执行下列操作：</p>
+<ul>
+<li>检查项目是否有未提交的代码；</li>
+<li>检查项目是否有快照版本的依赖；</li>
+<li>根据用户的输入将快照版本升级为发布版；</li>
+<li>将pom中的scm信息更新为标签地址；</li>
+<li>基于修改后的pom执行maven构建；</li>
+<li>提交pom变更；</li>
+<li>基于用户输入人为代码打标签；</li>
+<li>将代码从发布版升级为新的快照版本；</li>
+<li>提交pom变更；</li>
+</ul>
+<p>2.release：rollback 回退release：prepare所执行的操作，将pom回退至该操作之前的状态，并提交。需要注意的是不会删除标签，需要用户手动删除。</p>
+<p>3.release: perform 执行版本发布，签出 release:prepare生成的标签中的源代码，并在此基础上执行mvn deploy 命令打包并部署构件至仓库；</p>
+<p>要为项目发布版本，首先需要为其添加正确的版本控制信息，这是因为maven release plugin需要知道版本控制系统的主干，标签等地址信息才能执行相关的操作。<br>一般的scm信息如代码所示</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&lt;scm&gt;</span><br><span class="line"> &lt;connection&gt;scm:svn:http:&#x2F;&#x2F;192.168.1.103&#x2F;app&#x2F;trunk&lt;&#x2F;connection&gt; --表示只读的scm地址</span><br><span class="line"> &lt;developerConnection&gt;scm:svn:https:&#x2F;&#x2F;192.168.1.103&#x2F;app&#x2F;trunk&lt;&#x2F;developerConnection&gt;--表示一个可写的scm地址</span><br><span class="line"> &lt;url&gt;http:&#x2F;&#x2F;192.168.1.103&#x2F;account&#x2F;trunk&lt;&#x2F;url&gt;--表示可在浏览器访问的url地址</span><br><span class="line">&lt;&#x2F;scm&gt;</span><br><span class="line"></span><br><span class="line">&lt;plugin&gt;</span><br><span class="line"> &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;&gt;</span><br><span class="line"> &lt;artifactId&gt;maven-release-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line"> &lt;version&gt;2.0&lt;&#x2F;version&gt;</span><br><span class="line"> &lt;configuration&gt;</span><br><span class="line">  &lt;tagBase&gt;https:&#x2F;&#x2F;192.168.1.103&#x2F;app&#x2F;tags&#x2F;&lt;&#x2F;tagBase&gt;</span><br><span class="line"> &lt;&#x2F;configuration&gt;</span><br><span class="line">&lt;&#x2F;plugin&gt;</span><br><span class="line">注意：</span><br><span class="line">1、本机必须安装命令行可用的svn </span><br><span class="line">2、pom必须配置了可用的部署仓库</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>一切就绪之后，在项目的根目录下运行如下命令：<br>mvn release:prepare 之后，maven release plugin开始准备发布版本，如果检查到项目有未提交的代码，或者有依赖快照版本的会提示出错；<br>如果没有问题，则会提示用户输入想要发布的版本号/标签的名称以及新的快照版本号。</p>
+<p>如果标签等信息配置错误，则可以输入release：rollback命令回退发布，maven release plugin会将pom的配置回退到release：prepare之前的状态，但需要注意的是版本控制系统的标签并不会被删除。</p>
+<p>如果是多模块的项目，则会提示分别输入每个模块的发布版本号。</p>
+<p>运行如下的命令后，maven-release-plugin就会自动为所有子模块使用与父模块相同的发布版本和新的SNAPSHOT版本：</p>
+<p>mvn release：prepare -DautoVersionSubModules=true</p>
+<p>如果所有的没有问题执行 mvn release:perform。该命令将标签中的代码签出，执行mvn deploy 命令构建刚才准备的1.0.0版本，并部署到仓库中。至此版本1.0.0发布完成。</p>
+<h1 id="灵活的构建"><a href="#灵活的构建" class="headerlink" title="灵活的构建"></a>灵活的构建</h1><p>Maven为了支持构建的灵活性，内置三大属性，即：属性   Profile  资源过滤</p>
+<h2 id="六大属性"><a href="#六大属性" class="headerlink" title="六大属性"></a>六大属性</h2><p>1.内置属性 ${basedir} 项目根目录， ${version} 表示项目版本。<br>2.pom属性</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$&#123;project.build.sourceDirectory&#125;：项目的主源码目录，默认为src&#x2F;main&#x2F;java&#x2F;。</span><br><span class="line">$&#123;project.build.testSourceDirectory&#125;：项目的测试源码目录，默认为src&#x2F;test&#x2F;java&#x2F;。</span><br><span class="line">$&#123;project.build.directory&#125;：项目构建输出目录，默认为target&#x2F;。</span><br><span class="line">$&#123;project.outputDirectory&#125;：项目的主代码编译输出目录，默认为target&#x2F;classes&#x2F;。</span><br><span class="line">$&#123;project.testOutputDirectory&#125;：项目测试代码编译输出目录，默认为target&#x2F;test-classes&#x2F;。</span><br><span class="line">$&#123;project.groupId&#125;：项目的groupId。</span><br><span class="line">$&#123;project.artifactId&#125;：项目的artifactId。</span><br><span class="line">$&#123;project.version&#125;：项目的version。</span><br><span class="line">$&#123;project.build.finalName&#125;：项目打包输出文件的名称，默认为$&#123;project.artifactId&#125;-$&#123;project.version&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>3.自定义属性</p>
+<properties> 
+ <sys.version> test </sys.version>
+</properties>
+
+
+<p>4.settings属性</p>
+<p>用户以settings来头的属性引用settings文件中的xml元素的值。如常使用的${settings.localRepository} 执行本地仓库的地址</p>
+<p>5.java系统属性</p>
+<p>所有java系统属性都可以使用maven属性引用，${user.home} 指向了用户目录。</p>
+<p>6.环境变量属性</p>
+<p>所有环境变量属性都可以使用env.开头的maven属性引用。例如：${env.JAVA_HOME}指代了JAVA_HOME环境变量。</p>
+<h2 id="构建环境的差异"><a href="#构建环境的差异" class="headerlink" title="构建环境的差异"></a>构建环境的差异</h2><p>使用不同的profile</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">&lt;profiles&gt;</span><br><span class="line">    &lt;profile&gt;</span><br><span class="line">        &lt;id&gt;dev&lt;&#x2F;id&gt;</span><br><span class="line">        &lt;properties&gt;</span><br><span class="line">            &lt;env&gt;dev&lt;&#x2F;env&gt;</span><br><span class="line">        &lt;&#x2F;properties&gt;</span><br><span class="line">        &lt;activation&gt;</span><br><span class="line">            &lt;activeByDefault&gt;true&lt;&#x2F;activeByDefault&gt;</span><br><span class="line">        &lt;&#x2F;activation&gt;</span><br><span class="line">    &lt;&#x2F;profile&gt;</span><br><span class="line">    &lt;profile&gt;</span><br><span class="line">        &lt;id&gt;prd&lt;&#x2F;id&gt;</span><br><span class="line">        &lt;properties&gt;</span><br><span class="line">            &lt;env&gt;prd&lt;&#x2F;env&gt;</span><br><span class="line">        &lt;&#x2F;properties&gt;</span><br><span class="line">    &lt;&#x2F;profile&gt;</span><br><span class="line">&lt;&#x2F;profiles&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h1 id="生成项目站点"><a href="#生成项目站点" class="headerlink" title="生成项目站点"></a>生成项目站点</h1><p>使用 maven-site-plugin</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br></pre></td><td class="code"><pre><span class="line">&lt;?xml version&#x3D;&quot;1.0&quot; encoding&#x3D;&quot;UTF-8&quot;?&gt;</span><br><span class="line">&lt;project xmlns&#x3D;&quot;http:&#x2F;&#x2F;maven.apache.org&#x2F;POM&#x2F;4.0.0&quot;</span><br><span class="line">         xmlns:xsi&#x3D;&quot;http:&#x2F;&#x2F;www.w3.org&#x2F;2001&#x2F;XMLSchema-instance&quot;</span><br><span class="line">         xsi:schemaLocation&#x3D;&quot;http:&#x2F;&#x2F;maven.apache.org&#x2F;POM&#x2F;4.0.0 http:&#x2F;&#x2F;maven.apache.org&#x2F;xsd&#x2F;maven-4.0.0.xsd&quot;&gt;</span><br><span class="line">    &lt;modelVersion&gt;4.0.0&lt;&#x2F;modelVersion&gt;</span><br><span class="line"></span><br><span class="line">    &lt;groupId&gt;cn.chenwj&lt;&#x2F;groupId&gt;</span><br><span class="line">    &lt;artifactId&gt;spring-config&lt;&#x2F;artifactId&gt;</span><br><span class="line">    &lt;version&gt;1.0-SNAPSHOT&lt;&#x2F;version&gt;</span><br><span class="line">    &lt;!-- 问题解决信息 --&gt;</span><br><span class="line">    &lt;issueManagement&gt;</span><br><span class="line">        &lt;system&gt;Linux&lt;&#x2F;system&gt;</span><br><span class="line">        &lt;url&gt;http:&#x2F;&#x2F;www.baidu.com&#x2F;&lt;&#x2F;url&gt;</span><br><span class="line">    &lt;&#x2F;issueManagement&gt;</span><br><span class="line">    &lt;!-- 持续集成信息 --&gt;</span><br><span class="line">    &lt;ciManagement&gt;</span><br><span class="line">        &lt;url&gt;http:&#x2F;&#x2F;127.0.0.1:8080&#x2F;hudson&lt;&#x2F;url&gt;</span><br><span class="line">        &lt;system&gt;windows&lt;&#x2F;system&gt;</span><br><span class="line">    &lt;&#x2F;ciManagement&gt;</span><br><span class="line">    &lt;!-- 开发人员信息 --&gt;</span><br><span class="line">    &lt;developers&gt;</span><br><span class="line">        &lt;developer&gt;</span><br><span class="line">            &lt;id&gt;liuyan&lt;&#x2F;id&gt;</span><br><span class="line">            &lt;email&gt;suhuanzheng7784877@163.com&lt;&#x2F;email&gt;</span><br><span class="line">            &lt;name&gt;liuyan&lt;&#x2F;name&gt;</span><br><span class="line">            &lt;organization&gt;uxian99&lt;&#x2F;organization&gt;</span><br><span class="line">            &lt;roles&gt;</span><br><span class="line">                &lt;role&gt;softwareengineer&lt;&#x2F;role&gt;</span><br><span class="line">            &lt;&#x2F;roles&gt;</span><br><span class="line">            &lt;timezone&gt;8&lt;&#x2F;timezone&gt;</span><br><span class="line">        &lt;&#x2F;developer&gt;</span><br><span class="line">    &lt;&#x2F;developers&gt;</span><br><span class="line">    &lt;!--许可证 --&gt;</span><br><span class="line">    &lt;licenses&gt;</span><br><span class="line">        &lt;license&gt;</span><br><span class="line">            &lt;url&gt;http:&#x2F;&#x2F;127.0.0.1:8080&lt;&#x2F;url&gt;</span><br><span class="line">            &lt;comments&gt;评论&lt;&#x2F;comments&gt;</span><br><span class="line">            &lt;name&gt;完全开源&lt;&#x2F;name&gt;</span><br><span class="line">        &lt;&#x2F;license&gt;</span><br><span class="line">    &lt;&#x2F;licenses&gt;</span><br><span class="line">    &lt;scm&gt;</span><br><span class="line">        &lt;connection&gt;</span><br><span class="line">            scm:svn:https:&#x2F;&#x2F;liuyan:111111@127.0.0.1:8443&#x2F;svn&#x2F;mysvn&#x2F;mysrc&#x2F;01-OpenSource&#x2F;maven&#x2F;MavenAccount-aggregator</span><br><span class="line">        &lt;&#x2F;connection&gt;</span><br><span class="line">        &lt;developerConnection&gt;</span><br><span class="line">            scm:svn:https:&#x2F;&#x2F;liuyan:111111@127.0.0.1:8443&#x2F;svn&#x2F;mysvn&#x2F;mysrc&#x2F;01-OpenSource&#x2F;maven&#x2F;MavenAccount-aggregator</span><br><span class="line">        &lt;&#x2F;developerConnection&gt;</span><br><span class="line">        &lt;url&gt;https:&#x2F;&#x2F;127.0.0.1:8443&#x2F;svn&#x2F;mysvn&#x2F;mysrc&#x2F;01-OpenSource&#x2F;maven&#x2F;MavenAccount-aggregator</span><br><span class="line">        &lt;&#x2F;url&gt;</span><br><span class="line">    &lt;&#x2F;scm&gt;</span><br><span class="line">    &lt;reporting&gt;</span><br><span class="line">        &lt;plugins&gt;</span><br><span class="line">            &lt;!-- 构建项目站点报告插件--&gt;</span><br><span class="line">            &lt;plugin&gt;</span><br><span class="line">                &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                &lt;artifactId&gt;maven-site-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                &lt;version&gt;3.0-beta-3&lt;&#x2F;version&gt;</span><br><span class="line">                &lt;configuration&gt;</span><br><span class="line">                    &lt;!-- 配置站点国际化 --&gt;</span><br><span class="line">                    &lt;locales&gt;zh_CN&lt;&#x2F;locales&gt;</span><br><span class="line">                    &lt;!-- 输出编码 --&gt;</span><br><span class="line">                    &lt;outputEncoding&gt;GBK&lt;&#x2F;outputEncoding&gt;</span><br><span class="line">                &lt;&#x2F;configuration&gt;</span><br><span class="line">            &lt;&#x2F;plugin&gt;</span><br><span class="line">            &lt;!-- 构建项目站点报告插件--&gt;</span><br><span class="line">            &lt;plugin&gt;</span><br><span class="line">                &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                &lt;artifactId&gt;maven-site-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                &lt;version&gt;3.0-beta-3&lt;&#x2F;version&gt;</span><br><span class="line">                &lt;configuration&gt;</span><br><span class="line">                    &lt;!-- 配置报告信息 --&gt;</span><br><span class="line">                    &lt;reportPlugins&gt;</span><br><span class="line">                        &lt;!-- 检查代码规范报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;maven-checkstyle-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 测试报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;maven-surefire-report-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 项目基本信息报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;maven-project-info-reports-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                            &lt;version&gt;2.2&lt;&#x2F;version&gt;</span><br><span class="line">                            &lt;configuration&gt;</span><br><span class="line">                                &lt;dependencyDetailsEnabled&gt;true&lt;&#x2F;dependencyDetailsEnabled&gt;</span><br><span class="line">                                &lt;dependencyLocationsEnabled&gt;false&lt;&#x2F;dependencyLocationsEnabled&gt;</span><br><span class="line">                            &lt;&#x2F;configuration&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 项目API doc报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;maven-javadoc-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                            &lt;version&gt;2.7&lt;&#x2F;version&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 项目源代码报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.codehaus.mojo&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;jxr-maven-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 项目还需要做的TODO报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.codehaus.mojo&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;taglist-maven-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 项目源代码分析报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;maven-pmd-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                            &lt;version&gt;2.5&lt;&#x2F;version&gt;</span><br><span class="line">                            &lt;configuration&gt;</span><br><span class="line">                                &lt;linkXref&gt;true&lt;&#x2F;linkXref&gt;</span><br><span class="line">                                &lt;sourceEncoding&gt;GBK&lt;&#x2F;sourceEncoding&gt;</span><br><span class="line">                                &lt;minimumTokens&gt;100&lt;&#x2F;minimumTokens&gt;</span><br><span class="line">                                &lt;targetJdk&gt;1.5&lt;&#x2F;targetJdk&gt;</span><br><span class="line">                            &lt;&#x2F;configuration&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line"></span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;maven-dependency-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                            &lt;version&gt;3.1.1&lt;&#x2F;version&gt;</span><br><span class="line">                            &lt;executions&gt;</span><br><span class="line">                                &lt;execution&gt;</span><br><span class="line">                                    &lt;id&gt;copy&lt;&#x2F;id&gt;</span><br><span class="line">                                    &lt;phase&gt;package&lt;&#x2F;phase&gt;</span><br><span class="line">                                    &lt;goals&gt;</span><br><span class="line">                                        &lt;goal&gt;copy&lt;&#x2F;goal&gt;</span><br><span class="line">                                    &lt;&#x2F;goals&gt;</span><br><span class="line">                                    &lt;configuration&gt;</span><br><span class="line">                                        &lt;artifactItems&gt;</span><br><span class="line">                                            &lt;artifactItem&gt;</span><br><span class="line">                                                &lt;groupId&gt;[ groupId ]&lt;&#x2F;groupId&gt;</span><br><span class="line">                                                &lt;artifactId&gt;[ artifactId ]&lt;&#x2F;artifactId&gt;</span><br><span class="line">                                                &lt;version&gt;[ version ]&lt;&#x2F;version&gt;</span><br><span class="line">                                                &lt;type&gt;[ packaging ]&lt;&#x2F;type&gt;</span><br><span class="line">                                                &lt;classifier&gt;[classifier - optional]&lt;&#x2F;classifier&gt;</span><br><span class="line">                                                &lt;overWrite&gt;[ true or false ]&lt;&#x2F;overWrite&gt;</span><br><span class="line">                                                &lt;outputDirectory&gt;[ output directory ]&lt;&#x2F;outputDirectory&gt;</span><br><span class="line">                                                &lt;destFileName&gt;[ filename ]&lt;&#x2F;destFileName&gt;</span><br><span class="line">                                            &lt;&#x2F;artifactItem&gt;</span><br><span class="line">                                        &lt;&#x2F;artifactItems&gt;</span><br><span class="line">                                        &lt;!-- other configurations here --&gt;</span><br><span class="line">                                    &lt;&#x2F;configuration&gt;</span><br><span class="line">                                &lt;&#x2F;execution&gt;</span><br><span class="line">                            &lt;&#x2F;executions&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 生成站点文件具体信息报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.apache.maven.plugins&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;maven-linkcheck-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                            &lt;version&gt;1.1&lt;&#x2F;version&gt;</span><br><span class="line">                            &lt;configuration&gt;</span><br><span class="line">                            &lt;&#x2F;configuration&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                        &lt;!-- 单元测试覆盖率报告 --&gt;</span><br><span class="line">                        &lt;plugin&gt;</span><br><span class="line">                            &lt;groupId&gt;org.codehaus.mojo&lt;&#x2F;groupId&gt;</span><br><span class="line">                            &lt;artifactId&gt;cobertura-maven-plugin&lt;&#x2F;artifactId&gt;</span><br><span class="line">                        &lt;&#x2F;plugin&gt;</span><br><span class="line">                    &lt;&#x2F;reportPlugins&gt;</span><br><span class="line">                &lt;&#x2F;configuration&gt;</span><br><span class="line">            &lt;&#x2F;plugin&gt;</span><br><span class="line">        &lt;&#x2F;plugins&gt;</span><br><span class="line">    &lt;&#x2F;reporting&gt;</span><br><span class="line">&lt;&#x2F;project&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>运行maven site命令后，可以生成站点文件target/site/</p>
+<p><img src="/images/maven/site%E7%AB%99%E7%82%B9%E6%96%87%E4%BB%B6.png" alt="site站点文件"></p>
+<p>要在浏览器中预览结果，你可以运行mvn site:run，Maven会构建站点并启动一个内嵌的Jetty容器。一旦Jetty启动并开始监听8080端口（默认情况下），你就可以通过在浏览器中输入<a target="_blank" rel="noopener" href="http://localhost:8080/%E6%9F%A5%E7%9C%8B%E9%A1%B9%E7%9B%AE%E7%AB%99%E7%82%B9%E4%BA%86%E3%80%82">http://localhost:8080/查看项目站点了。</a></p>
+<p><img src="/images/maven/%E4%B8%B0%E5%AF%8C%E7%9A%84%E9%A1%B9%E7%9B%AE%E4%BF%A1%E6%81%AF.png" alt="丰富的项目信息"></p>
+<p>可以通过丰富的项目报告插件配置，生成内容丰富的报告。报告插件不同于普通的插件（<project><build><plugins>）它是配置在<project><reporting><plugins>节点下</p>
+<h1 id="pom元素-settings元素以及常用插件"><a href="#pom元素-settings元素以及常用插件" class="headerlink" title="pom元素 settings元素以及常用插件"></a>pom元素 settings元素以及常用插件</h1><p><img src="/images/maven/pom%E5%85%83%E7%B4%A01.png" alt="pom元素1"><br><img src="/images/maven/pom%E5%85%83%E7%B4%A02.png" alt="pom元素2"><br><img src="/images/maven/setting%E5%85%83%E7%B4%A0.png" alt="setting元素"><br><img src="/images/maven/%E5%B8%B8%E7%94%A8%E6%8F%92%E4%BB%B61.png" alt="常用插件1"><br><img src="/images/maven/%E5%B8%B8%E7%94%A8%E6%8F%92%E4%BB%B62.png" alt="常用插件2"></p>
+<h1 id="Archetype的使用"><a href="#Archetype的使用" class="headerlink" title="Archetype的使用"></a>Archetype的使用</h1><p>archetype 可以快速生产项目骨架，可以理解archetype是maven项目的模板，例如maven-archetype-quickstart就是最简单的maven项目模板。</p>
+<p>archetype是通过maven-archetype-plugin插件来实现的。</p>
+<h2 id="使用archetype的一般步骤"><a href="#使用archetype的一般步骤" class="headerlink" title="使用archetype的一般步骤"></a>使用archetype的一般步骤</h2><p>1.执行命令</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">maven3 :mvn archetype:generate</span><br><span class="line"></span><br><span class="line">maven2 :mvn org.apache.maven.plugins:maven-archetype-plugin:2.0-alpha-5:generate</span><br></pre></td></tr></table></figure>
+<p>2.输入基本的参数</p>
+<p>groupId artifactId version package </p>
+<h2 id="常用archetype介绍"><a href="#常用archetype介绍" class="headerlink" title="常用archetype介绍"></a>常用archetype介绍</h2><ol>
+<li><p>maven-archetype-quickstart 最简单的maven项目</p>
+</li>
+<li><p>maven-archetype-webapp 最简单的web项目</p>
+</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/maven/" rel="tag"># maven</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-07-11/python2-7%E9%AB%98%E7%BA%A7%E6%95%99%E7%A8%8B%E5%85%A5%E9%97%A8/" rel="prev" title="python2.7高级教程入门">
+      <i class="fa fa-chevron-left"></i> python2.7高级教程入门
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-09-29/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3java%E8%99%9A%E6%8B%9F%E6%9C%BA-java%E5%86%85%E5%AD%98%E5%8C%BA%E5%9F%9F%E5%92%8C%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA%E5%BC%82%E5%B8%B8/" rel="next" title="深入理解java虚拟机-java内存区域和内存溢出异常">
+      深入理解java虚拟机-java内存区域和内存溢出异常 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8maven%E8%BF%9B%E8%A1%8C%E6%B5%8B%E8%AF%95"><span class="nav-number">1.</span> <span class="nav-text">使用maven进行测试</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#maven-surefire-plugin-%E6%8F%92%E4%BB%B6%E7%AE%80%E4%BB%8B"><span class="nav-number">1.1.</span> <span class="nav-text">maven-surefire-plugin 插件简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B7%B3%E8%BF%87%E6%B5%8B%E8%AF%95"><span class="nav-number">1.2.</span> <span class="nav-text">跳过测试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E6%8C%87%E5%AE%9A%E8%A6%81%E8%BF%90%E8%A1%8C%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B"><span class="nav-number">1.3.</span> <span class="nav-text">动态指定要运行的测试用例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8C%85%E5%90%AB%E4%B8%8E%E6%8E%92%E9%99%A4%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B"><span class="nav-number">1.4.</span> <span class="nav-text">包含与排除测试用例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E6%88%90%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A"><span class="nav-number">1.5.</span> <span class="nav-text">生成测试报告</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A"><span class="nav-number">1.5.1.</span> <span class="nav-text">基本测试报告</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95%E8%A6%86%E7%9B%96%E7%8E%87%E6%8A%A5%E5%91%8A"><span class="nav-number">1.5.2.</span> <span class="nav-text">测试覆盖率报告</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8D%E7%94%A8%E6%B5%8B%E8%AF%95%E4%BB%A3%E7%A0%81"><span class="nav-number">1.5.3.</span> <span class="nav-text">重用测试代码</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8maven%E6%9E%84%E5%BB%BAweb%E5%BA%94%E7%94%A8"><span class="nav-number">2.</span> <span class="nav-text">使用maven构建web应用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8jetty-maven-plugin-%E8%BF%9B%E8%A1%8C%E6%B5%8B%E8%AF%95"><span class="nav-number">2.1.</span> <span class="nav-text">使用jetty-maven-plugin 进行测试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8cargo%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E5%8C%96%E9%83%A8%E7%BD%B2"><span class="nav-number">2.2.</span> <span class="nav-text">使用cargo实现自动化部署</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#standalone%E6%A8%A1%E5%BC%8F"><span class="nav-number">2.2.1.</span> <span class="nav-text">standalone模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#existing%E6%A8%A1%E5%BC%8F"><span class="nav-number">2.2.2.</span> <span class="nav-text">existing模式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2%E8%87%B3%E8%BF%9C%E7%A8%8Bweb%E5%AE%B9%E5%99%A8"><span class="nav-number">2.2.3.</span> <span class="nav-text">部署至远程web容器</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%89%88%E6%9C%AC%E7%AE%A1%E7%90%86"><span class="nav-number">3.</span> <span class="nav-text">版本管理</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%89%88%E6%9C%AC%E5%8F%B7%E7%9A%84%E5%AE%9A%E4%B9%89"><span class="nav-number">3.1.</span> <span class="nav-text">版本号的定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BB%E5%B9%B2-%E6%A0%87%E7%AD%BE%E5%92%8C%E5%88%86%E6%94%AF"><span class="nav-number">3.2.</span> <span class="nav-text">主干 标签和分支</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%87%AA%E5%8A%A8%E5%8C%96%E7%89%88%E6%9C%AC%E5%8F%91%E5%B8%83"><span class="nav-number">3.3.</span> <span class="nav-text">自动化版本发布</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%81%B5%E6%B4%BB%E7%9A%84%E6%9E%84%E5%BB%BA"><span class="nav-number">4.</span> <span class="nav-text">灵活的构建</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AD%E5%A4%A7%E5%B1%9E%E6%80%A7"><span class="nav-number">4.1.</span> <span class="nav-text">六大属性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9E%84%E5%BB%BA%E7%8E%AF%E5%A2%83%E7%9A%84%E5%B7%AE%E5%BC%82"><span class="nav-number">4.2.</span> <span class="nav-text">构建环境的差异</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%94%9F%E6%88%90%E9%A1%B9%E7%9B%AE%E7%AB%99%E7%82%B9"><span class="nav-number">5.</span> <span class="nav-text">生成项目站点</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#pom%E5%85%83%E7%B4%A0-settings%E5%85%83%E7%B4%A0%E4%BB%A5%E5%8F%8A%E5%B8%B8%E7%94%A8%E6%8F%92%E4%BB%B6"><span class="nav-number">6.</span> <span class="nav-text">pom元素 settings元素以及常用插件</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Archetype%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="nav-number">7.</span> <span class="nav-text">Archetype的使用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8archetype%E7%9A%84%E4%B8%80%E8%88%AC%E6%AD%A5%E9%AA%A4"><span class="nav-number">7.1.</span> <span class="nav-text">使用archetype的一般步骤</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8archetype%E4%BB%8B%E7%BB%8D"><span class="nav-number">7.2.</span> <span class="nav-text">常用archetype介绍</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

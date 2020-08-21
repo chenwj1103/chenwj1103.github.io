@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="索引是存储引擎用于快速找到记录的一种数据结构。 数据量越大，索引对性能的影响越重要；不恰当的索引对性能的影响不明显，数据量增大时性能急剧下降； 索引基础存储引擎首先在索引中找到对应的值，然后根据匹配的索引记录找到对应的数据行。 创建一个包含两个列的索引和创建两个只包含一列的索引是大不相同的。 索引的类型mysql中，索引是在存储引擎层，而不是在服务器层的。索引没有统一的标准。 B-Tree索引大部">
+<meta property="og:type" content="article">
+<meta property="og:title" content="高性能mysql-创建高性能的索引">
+<meta property="og:url" content="http://chenwj1103.github.io/2018-11-28/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%88%9B%E5%BB%BA%E9%AB%98%E6%80%A7%E8%83%BD%E7%9A%84%E7%B4%A2%E5%BC%95/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="索引是存储引擎用于快速找到记录的一种数据结构。 数据量越大，索引对性能的影响越重要；不恰当的索引对性能的影响不明显，数据量增大时性能急剧下降； 索引基础存储引擎首先在索引中找到对应的值，然后根据匹配的索引记录找到对应的数据行。 创建一个包含两个列的索引和创建两个只包含一列的索引是大不相同的。 索引的类型mysql中，索引是在存储引擎层，而不是在服务器层的。索引没有统一的标准。 B-Tree索引大部">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/B-Tree%E7%B4%A2%E5%BC%95%E7%9A%84%E6%8A%BD%E8%B1%A1%E8%A1%A8%E7%A4%BA.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%E5%92%8C%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%E7%9A%84%E5%AF%B9%E6%AF%94%E5%9B%BE.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95%E7%9A%84%E4%BD%BF%E7%94%A8.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/orderBy%E7%9A%84%E8%A1%A8.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E9%9D%9E%E6%9C%80%E5%B7%A6%E7%B4%A2%E5%BC%95-%E7%9A%84orderBy%E5%AD%90%E5%8F%A5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E4%B8%8D%E8%83%BD%E4%BD%BF%E7%94%A8%E7%B4%A2%E5%BC%95%E5%81%9A%E6%8E%92%E5%BA%8F%E7%9A%84%E4%BE%8B%E5%AD%90.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E9%9C%80%E8%A6%81%E5%86%97%E4%BD%99%E7%B4%A2%E5%BC%95%E7%9A%84%E6%83%85%E5%86%B5.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E7%B4%A2%E5%BC%95%E6%A1%88%E4%BE%8B%E5%AD%A6%E4%B9%A0%E9%9C%80%E6%B1%82.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E5%A4%9A%E4%B8%AA%E8%8C%83%E5%9B%B4%E6%9D%A1%E4%BB%B6%E7%9A%84%E4%BE%8B%E5%AD%90.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/mysql/%E5%88%9B%E5%BB%BA%E7%B4%A2%E5%BC%95%E7%9A%84%E4%B8%89%E4%B8%AA%E5%8E%9F%E5%88%99.png">
+<meta property="article:published_time" content="2018-11-28T01:38:14.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.844Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="mysql索引">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenwj1103.github.io/images/mysql/B-Tree%E7%B4%A2%E5%BC%95%E7%9A%84%E6%8A%BD%E8%B1%A1%E8%A1%A8%E7%A4%BA.png">
+
+<link rel="canonical" href="http://chenwj1103.github.io/2018-11-28/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%88%9B%E5%BB%BA%E9%AB%98%E6%80%A7%E8%83%BD%E7%9A%84%E7%B4%A2%E5%BC%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>高性能mysql-创建高性能的索引 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2018-11-28/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%88%9B%E5%BB%BA%E9%AB%98%E6%80%A7%E8%83%BD%E7%9A%84%E7%B4%A2%E5%BC%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          高性能mysql-创建高性能的索引
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-11-28 09:38:14" itemprop="dateCreated datePublished" datetime="2018-11-28T09:38:14+08:00">2018-11-28</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/mysql/" itemprop="url" rel="index"><span itemprop="name">mysql</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>8.9k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>8 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>索引是存储引擎用于快速找到记录的一种数据结构。</p>
+<p>数据量越大，索引对性能的影响越重要；不恰当的索引对性能的影响不明显，数据量增大时性能急剧下降；</p>
+<h1 id="索引基础"><a href="#索引基础" class="headerlink" title="索引基础"></a>索引基础</h1><p>存储引擎首先在索引中找到对应的值，然后根据匹配的索引记录找到对应的数据行。</p>
+<p>创建一个包含两个列的索引和创建两个只包含一列的索引是大不相同的。</p>
+<h2 id="索引的类型"><a href="#索引的类型" class="headerlink" title="索引的类型"></a>索引的类型</h2><p>mysql中，索引是在存储引擎层，而不是在服务器层的。索引没有统一的标准。</p>
+<h3 id="B-Tree索引"><a href="#B-Tree索引" class="headerlink" title="B-Tree索引"></a>B-Tree索引</h3><p>大部分mysql引擎都支持这种索引，它使用的是B-Tree数据结构来存储数据。但是NDB集群存储引擎实际采用T-Tree结构存储这种索引，InnoDB则使用B+Tree。</p>
+<p>存储引擎以不同的方式使用B-Tree索引，性能也是各不相同的，例如MylSAM使用前缀压缩技术使得索引更小，但是innoDB则按照原数据格式进行存储，MylSAM索引通过数据的物理位置引用被索引的行，而innoDB则根据主键来引用被索引的行。</p>
+<p><img src="/images/mysql/B-Tree%E7%B4%A2%E5%BC%95%E7%9A%84%E6%8A%BD%E8%B1%A1%E8%A1%A8%E7%A4%BA.png" alt="B-Tree索引的抽象表示"></p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/xu_flash/article/details/62216969">bTree索引</a></p>
+<ul>
+<li>简单表述实现</li>
+</ul>
+<p>B-Tree索引可以加快访问速度。因为不需要全表扫描，而是从索引的根节点开始搜索，根节点的槽中存放了指向子节点的指针，存储引擎根据这些指针向下查找，通过比较节点页的值和要查找的值可以找到合适指针进入下层子节点，这些指针实际上定义了子节点页中值的上线和下限。</p>
+<p>最终存储引擎要么找到对应的额值，要么记录不存在。</p>
+<h4 id="索引对如下类型查询有效"><a href="#索引对如下类型查询有效" class="headerlink" title="索引对如下类型查询有效"></a>索引对如下类型查询有效</h4><ul>
+<li><p>全值匹配</p>
+</li>
+<li><p>匹配最左前缀</p>
+</li>
+<li><p>匹配列前缀 </p>
+</li>
+<li><p>匹配范围值</p>
+</li>
+<li><p>精确匹配某一列并匹配范围外的另外一列</p>
+</li>
+<li><p>只访问索引的查询</p>
+</li>
+</ul>
+<h4 id="B-tree索引的限制"><a href="#B-tree索引的限制" class="headerlink" title="B-tree索引的限制"></a>B-tree索引的限制</h4><ul>
+<li><p>如果不是按照索引的最左列开始查找，则无法使用索引；</p>
+</li>
+<li><p>不能跳过索引中的列，如果不指定索引名字，在mysq只能使用索引的第一列；</p>
+</li>
+<li><p>如果查询中有某个列的范围查询，则其右边的所有列都无法使用索引优化查询，如：where last_name=’AD’ and first_name like ‘J%’ and dob = ‘1976-12-23’,只能使用索引的前两列；</p>
+</li>
+</ul>
+<h3 id="哈希索引"><a href="#哈希索引" class="headerlink" title="哈希索引"></a>哈希索引</h3><p>哈希索引基于哈希表实现，只有精确匹配索引所有列的查询才有效。对于每一行数据，存储引擎都会对所有的索引列计算一个hash码。hash索引将所有的hash码存储在索引中，hash表中存储指向每个数据行的指针。</p>
+<p>在mysql中，只有memory引擎显示支持hash索引，也是memory引擎的默认引擎。</p>
+<p>memory引擎过是支持非唯一hash索引的，这在数据库中与众不同。如果多列的hash值相同，索引会以链表的方式存放多个记录指针在同一个hash条目中。</p>
+<h4 id="hash索引的限制"><a href="#hash索引的限制" class="headerlink" title="hash索引的限制"></a>hash索引的限制</h4><ul>
+<li><p>hash索引只包含hash值和行指针，而不存储字段，所以不能使用索引中的值来避免读取行；</p>
+</li>
+<li><p>hash索引数据并不是按照索引值顺序存储，所以也就无法用于排序；</p>
+</li>
+<li><p>hash索引也不支持部分索引列匹配查找，所以hash索引始终是使用索引列的全部内容来计算hash值的。</p>
+</li>
+<li><p>hash索引只是支持等值比较查询，不支持范围查询；</p>
+</li>
+<li><p>访问hash索引的顺序非常快，除非有很多hash冲突。当出现hash冲突的时候，存储引擎必须遍历链表中的所有行指针，逐行进行比较，直到找到所有符合条件的才可以。</p>
+</li>
+<li><p>如果hash冲突很多的话，一些索引维护的代价也会很高；</p>
+</li>
+</ul>
+<p>由于以上的限制，hash索引只是适合特定的场合，一旦适合hash索引，它带来的性能提升非常明显。</p>
+<p>innodb引擎有一个特殊的功能叫做‘自适应hash索引’，当innoDB注意到某些索引使用的非常频繁时，它会在B-Tree索引的基础上再创建一个hash索引，这样就让B-Tree索引页具有hash索引的一些优点，比如快速的hash查找。</p>
+<p><strong>自定义hash索引</strong>：如果存储一个url，可以存储一个url和hash码，查询时执行如下命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">select id from url_table where url &#x3D; &quot;http:&#x2F;&#x2F;www.mysql.com&quot; and url_crc &#x3D; CRC32(&quot;http:&#x2F;&#x2F;www.mysql.com&quot;);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>这样性能会非常高，mysql优化性很高而体积很小的基于url_crc列的索引来查找。</p>
+<p>缺陷是需要手动维护hash值，不过可以使用触发器实现；</p>
+<h3 id="空间数据索引"><a href="#空间数据索引" class="headerlink" title="空间数据索引"></a>空间数据索引</h3><p>MylSAM 表支持空间索引，可以用作地理数据存储。mysql的gis支持不完善，所以大部分不适用这个特性。</p>
+<h3 id="全文索引"><a href="#全文索引" class="headerlink" title="全文索引"></a>全文索引</h3><p>全文索引是一种特殊类型的索引，它查找的是文中的关键词，而不是直接比较索引中的值。全文索引和其他几类索引的匹配方式完全不一样。</p>
+<h3 id="其它索引类别"><a href="#其它索引类别" class="headerlink" title="其它索引类别"></a>其它索引类别</h3><h1 id="索引的优点"><a href="#索引的优点" class="headerlink" title="索引的优点"></a>索引的优点</h1><p>索引可以让服务器快速定位到表的指定位置，而且由于索引的数据结构不同，索引也有一些其它的附加作用。</p>
+<h2 id="优点如下："><a href="#优点如下：" class="headerlink" title="优点如下："></a>优点如下：</h2><ul>
+<li>索引大大减小了服务器需要扫描的数据量；</li>
+<li>索引可以帮助服务器避免排序和临时表；</li>
+<li>索引可以将随机IO变为顺序IO；</li>
+</ul>
+<h1 id="高性能的索引策略"><a href="#高性能的索引策略" class="headerlink" title="高性能的索引策略"></a>高性能的索引策略</h1><h2 id="独立的列"><a href="#独立的列" class="headerlink" title="独立的列"></a>独立的列</h2><p>独立的列是指不能是表达式的一部分。</p>
+<ul>
+<li>下列的表达式不能使用actor_id列的索引。</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">select actor_id from actor_table where actor_id +1 &#x3D; 5;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>以下是另一个常见的错误,使用不到DATE_COL列的索引；</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">select * from TO_DAYS(CURRENT_DATE) - TO_DAYS(DATE_COL) &lt;&#x3D;10;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="前缀索引和索引的选择性"><a href="#前缀索引和索引的选择性" class="headerlink" title="前缀索引和索引的选择性"></a>前缀索引和索引的选择性</h2><ul>
+<li><p>索引比较长的字符串，模拟hash索引是一个策略。通常可以索引开始的部分字符，这样可以大大节约索引空间，从而提高索引效率，但这样也会降低索引的选择性。索引的选择性越高则查询效率越高。</p>
+</li>
+<li><p>索引的选择性是指不重复的索引值和数据表的记录总数的比值。</p>
+</li>
+<li><p>前缀索引的缺点：无法使用前缀索引做order by和 group by，也无法使用前缀索引做覆盖扫描。</p>
+</li>
+<li><p>对于blob和text的字符串类型的列，必须使用前缀索引，因为mysql不允许索引这些列的完整长度。</p>
+</li>
+</ul>
+<p>1.前缀选择时需要做测试,可以一直增加前缀长度，至到前缀的选择性接近完整列的选择性。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">select count(*) as cnt, LEFT(city,3) as pref from sakil.city_demo group by pref order by cnt desc limit 10;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>2.计算合适的前缀长度的另外一个办法是计算完整列的选择性，并使得前缀的选择性接近于完整列的选择性。通常接近于0.031就可以用了.最坏的情况，平均选择性如果是4或5的索引已经足够了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">select count(distinct LEFT(city,3))&#x2F;count(*) from sakila.city_demo;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="多列索引"><a href="#多列索引" class="headerlink" title="多列索引"></a>多列索引</h2><p>比较错误的多列索引使用方法：为每个列创建独立的索引，或者按照错误的顺序创建多列索引；</p>
+<p>MySQL会对索引做优化，将多个单列的索引做优化合并，但更多时候说明了表上的索引建的很糟糕。</p>
+<ul>
+<li><p>当出现服务器对多个索引做相交操作时（通常有多个AND条件），通常意味着需要一个包含多个相关列的多列索引，而不是多个独立的单列索引；</p>
+</li>
+<li><p>当服务器需要多个索引做联合操作时（通常有多个OR条件），通常消耗大量的CPU和内存资源在算法的缓存、排序和合并操作上，</p>
+</li>
+</ul>
+<h2 id="选择合适的索引顺序"><a href="#选择合适的索引顺序" class="headerlink" title="选择合适的索引顺序"></a>选择合适的索引顺序</h2><p>正确的顺序依赖于使用该索引的查询，并且同时需要考虑满足排序和分组的需要。</p>
+<p>在一个多列B-Tree索引中，索引列的顺序意味着索引首先按照最左列进行排序。其次是第二列。</p>
+<p>在不考虑排序和分组时，将选择性最高的列放到索引的最前列是很好的。这时候索引的作用只是优化where条件的查询。</p>
+<h3 id="查询例子："><a href="#查询例子：" class="headerlink" title="查询例子："></a>查询例子：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">select sum(staff_id &#x3D;2),sum(customer_id &#x3D; 584) from payment ;</span><br><span class="line"></span><br><span class="line">sum(staff_id):7922</span><br><span class="line"></span><br><span class="line">sum(customer_id):30</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>根据前面的经验，customer_id应该放到前面，因为对应条件值的customer_id数量更小。</p>
+<p>或者判断选择性更高的 customer_id，所以选择customer_id在最前面。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">select count(distinct staff_id)&#x2F;count(*) as staff_id_selectvity,count(distinct customer_id)&#x2F;count(*) as customer_id_selectvity, count(*) from payment</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="聚簇索引"><a href="#聚簇索引" class="headerlink" title="聚簇索引"></a>聚簇索引</h2><p>聚簇索引并不是一种单独的索引类型，而是一种数据存储方式。具体的细节依赖于其实现方式，但innoDB的聚簇索引实际上在同一个结构中保存了B-Tree索引和数据行。</p>
+<p>当表有聚簇索引时，它的数据实际上存放在索引的叶子页中。术语‘聚簇’表示数据行和相邻的键值紧凑的存储在一起。因为无法同事把数据航存放在两个不同的地方，所以一个表只能有一个聚簇索引。</p>
+<p>因为存储引擎负责实现索引，因此不是所有的存储引擎都支持聚簇索引。innoDB是支持聚簇索引的。</p>
+<h3 id="聚簇索引的优点"><a href="#聚簇索引的优点" class="headerlink" title="聚簇索引的优点"></a>聚簇索引的优点</h3><ul>
+<li><p>可以把相关数据保存在一起，例如实现电子邮箱时，可以根据用户id来聚集数据，这样可以从磁盘读取很少的数据也就能获取某个用户的全部邮件，如果没有使用聚簇索引，每封邮件都可能导致一次磁盘IO。</p>
+</li>
+<li><p>数据访问更快，聚簇索引将索引和数据保存在一个B-Tree中，因此从聚簇索引中获取数据通常比在非聚簇索引中查找更快；</p>
+</li>
+<li><p>使用覆盖索引扫描的查询可以直接使用页节点中的主键值；</p>
+</li>
+</ul>
+<h3 id="聚簇索引的缺点"><a href="#聚簇索引的缺点" class="headerlink" title="聚簇索引的缺点"></a>聚簇索引的缺点</h3><ul>
+<li><p>极大提高了IO密集型的应用的性能，<strong>但是如果数据全部放在内存中</strong>，则访问顺序就没那么重要了，聚簇索引也就没有优势了；</p>
+</li>
+<li><p>插入速度严重依赖于插入顺序，按照主键的顺序插入到innoDB表中速度最快，如果不是按照主键顺序加载数据，则加载完后最好使用optimize table命令重新组织一下表；</p>
+</li>
+<li><p>更新聚簇索引的代价很高，因为会强制innoDB将每个更新的行移动到新的位置；</p>
+</li>
+<li><p>聚簇索引可能导致全表扫描变慢，尤其是行比较稀疏，或者由于分裂导致数据存储不连续的时候；</p>
+</li>
+<li><p>非聚簇索引可能比想象的要更大，因为在非聚簇索引的叶子节点包含了引用行的主键列；</p>
+</li>
+<li><p>二级索引访问需要两次索引查找，而不是一次，因为二级索引的叶子节点存储的的不是行指针，而是主键值；</p>
+</li>
+</ul>
+<p><img src="/images/mysql/%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%E5%92%8C%E9%9D%9E%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%E7%9A%84%E5%AF%B9%E6%AF%94%E5%9B%BE.png" alt="聚簇索引和非聚簇索引的对比图"></p>
+<h2 id="在innoDB表中按主键顺序插入行或UUID最为主键"><a href="#在innoDB表中按主键顺序插入行或UUID最为主键" class="headerlink" title="在innoDB表中按主键顺序插入行或UUID最为主键"></a>在innoDB表中按主键顺序插入行或UUID最为主键</h2><p>使用自增主键（顺序的），避免随机的（不连续且值的分布范围非常大）聚簇索引，特别是对于IO密集型的应用。从性能角度考虑，使用UUID作为聚簇索引则会很糟糕。它使得聚簇索引的插入变得随机。</p>
+<p>使用自增主键，因为主键的值是顺序的，所以innoDB把每一条记录都存储在上一条记录的后面。当达到页的最大填充因子时，下一条记录会被写入新的页中。</p>
+<p>使用UUID作为聚簇索引插入新的行时，因为新行的主键值不一定比之前插入的大，所以innoDB无法简单地总是把新行插入到碎银的后面，而是需要为新的俄航寻找合适的位置，通常是使用已有数据的中间位置，并分配空间，这回增减很多额外的工作，导致数据部分不够优化；</p>
+<ul>
+<li>使用UUID作为聚簇索引的缺点</li>
+</ul>
+<p>1.写入的目标页可能已经刷到磁盘上并从缓存中溢出，或者是没有被加载到缓存中，innoDB在插入之前不得不先找到并从磁盘读取目标页到内存中，这<strong>导致大量的随机IO</strong>；<br>2.因为写入是乱序的，<strong>innoDB不得不频繁的做页分裂操作</strong>，以便为新的行分配空间。页分裂导致移动大量的数据，一次插入最少需要更改三个页而不是一个页；<br>3.由于频繁的页分裂，页会变得洗漱并被不规则的填充，最终<strong>数据会有碎片</strong>；</p>
+<h2 id="顺序的主键什么时候回造成更坏的结果"><a href="#顺序的主键什么时候回造成更坏的结果" class="headerlink" title="顺序的主键什么时候回造成更坏的结果"></a>顺序的主键什么时候回造成更坏的结果</h2><p>对于高并发的的工作负载，在innoDB中按照主键插入会造成明显的争用。</p>
+<h2 id="覆盖索引"><a href="#覆盖索引" class="headerlink" title="覆盖索引"></a>覆盖索引</h2><p>如果索引的叶子节点中已经包含要查询的数据，就不需要再回表查询。如果一个索引包含所有需要查询的字段的值，我们就称之为覆盖索引。</p>
+<h3 id="覆盖索引的好处（不需要回表查询）"><a href="#覆盖索引的好处（不需要回表查询）" class="headerlink" title="覆盖索引的好处（不需要回表查询）"></a>覆盖索引的好处（不需要回表查询）</h3><ul>
+<li><p>索引条目通常远小于数据行大小，所以如果只需要读取索引，那么mysql会极大的减少数据访问量。</p>
+</li>
+<li><p>因为索引是按照列值顺序存储的（至少单个页内是如此），所以IO密集型的查询范围查询会比随机从磁盘读取每一行数据的IO少得多。</p>
+</li>
+<li><p>一些存储引擎入MySAM在内存中只缓存索引，数据则依赖于操作系统来缓存，因此访问数据需要一次系统调用，这回导致严重的性能问题。</p>
+</li>
+<li><p>由于innoDB的聚簇索引，覆盖索引对innoDB表特别有用，innoDB的二级索引在叶子节点保存了行的主键索引，如果二级主键能够覆盖查询，可以避免对主键索引的二次查询。</p>
+</li>
+</ul>
+<h3 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h3><p>不是所有的类型的索引都可以成为覆盖索引，覆盖索引必须要存储索引列的值，而hash索引、空间索引、全文索引都不存储索引列的值。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select store_id,film_id from sakila.inventory;</span><br></pre></td></tr></table></figure>
+<p>如表inventory中有一个多列索引（store_id,film_id）。mysql 如果只是需要访问这两列，就可以使用这个索引做覆盖索引；</p>
+<p><img src="/images/mysql/%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95%E7%9A%84%E4%BD%BF%E7%94%A8.png" alt="覆盖索引的使用"></p>
+<p>在extra列显示 using index,而不是type列的index。</p>
+<h2 id="使用索引扫描来做排序"><a href="#使用索引扫描来做排序" class="headerlink" title="使用索引扫描来做排序"></a>使用索引扫描来做排序</h2><p>mysql有两种方式可以生成有序的结果，通过排序操作；或者通过索引顺序扫描。如果mysql使用explain处理啊的type值为index，则说明mysql使用了索引扫描来做排序。</p>
+<p>扫描本身很快，只需要从一条索引到下一条记录，但是如果索引不能覆盖查询的所有列，那就不得不每扫描一条索引记录就都回表查询一次。</p>
+<ul>
+<li><p>如果查询需要关联多张表，则只有order by 子句引用的字段全部为第一张表时，才可以使用索引做排序。</p>
+</li>
+<li><p>即使order by子句不满足索引的最左前缀的要求，也可以用于查询排序，这是因为索引的第一列被指定为一个常数。</p>
+</li>
+</ul>
+<p><img src="/images/mysql/orderBy%E7%9A%84%E8%A1%A8.png" alt="orderBy的表"></p>
+<p><img src="/images/mysql/%E9%9D%9E%E6%9C%80%E5%B7%A6%E7%B4%A2%E5%BC%95-%E7%9A%84orderBy%E5%AD%90%E5%8F%A5.png" alt="非最左索引-的orderBy子句"></p>
+<p><img src="/images/mysql/%E4%B8%8D%E8%83%BD%E4%BD%BF%E7%94%A8%E7%B4%A2%E5%BC%95%E5%81%9A%E6%8E%92%E5%BA%8F%E7%9A%84%E4%BE%8B%E5%AD%90.png" alt="不能使用索引做排序的例子"></p>
+<h2 id="冗余和重复索引"><a href="#冗余和重复索引" class="headerlink" title="冗余和重复索引"></a>冗余和重复索引</h2><p>mysql是允许在相同的列上创建多个索引，无论是有意义的还是无意义的，mysql需要单独维护重复的索引。</p>
+<p>重复索引是指在相同的列上按照相同的顺序创建相同类型的索引，应该避免创建重复索引。</p>
+<p>冗余索引和重复索引有一些不同，如果创建了索引（A，B）,在创建索引（A）就是冗余索引，因为这只是前一个索引的前缀索引。如果创建索引（B,A）就不是冗余索引，索引（B）也不是。</p>
+<h3 id="冗余索引的情况"><a href="#冗余索引的情况" class="headerlink" title="冗余索引的情况"></a>冗余索引的情况</h3><p>有人可能会增加一个新的索引（A,B）,而不是扩展已有的索引（A）。还有一种情况是扩展为（A,ID）,其中ID是主键，对于innoDB来说，主键列已经包含在二级索引中了，这也是冗余索引。</p>
+<p><img src="/images/mysql/%E9%9C%80%E8%A6%81%E5%86%97%E4%BD%99%E7%B4%A2%E5%BC%95%E7%9A%84%E6%83%85%E5%86%B5.png" alt="需要冗余索引的情况"></p>
+<p>有两个索引的缺点就是维护成本更高。插入数据需要的时间大大增加。</p>
+<h2 id="索引和锁"><a href="#索引和锁" class="headerlink" title="索引和锁"></a>索引和锁</h2><p>索引可以让查询锁定更少的行，如果你的查询从来不访问那些不需要的行，那么就可以锁定更少的行。锁定行仍然会带来额外的开销，而且锁定超过需要的行会增加锁争用并减少并发性；</p>
+<p>innoDB只有在访问行的时候才会对其加锁，而索引能够见啥innoDB访问的行数，从而减少锁的数量，但这只有当innoDB在存储引擎层能够过滤掉所有不需要的行时才有效。如果索引无法过滤掉无效的行，那么在innoDB检索到数据返回给服务器层时，mysql服务器才会应用where子句，这时候已经无法避免应用where子句。</p>
+<h1 id="索引案例学习"><a href="#索引案例学习" class="headerlink" title="索引案例学习"></a>索引案例学习</h1><p><img src="/images/mysql/%E7%B4%A2%E5%BC%95%E6%A1%88%E4%BE%8B%E5%AD%A6%E4%B9%A0%E9%9C%80%E6%B1%82.png" alt="索引案例学习需求"></p>
+<h2 id="支持多种过滤条件"><a href="#支持多种过滤条件" class="headerlink" title="支持多种过滤条件"></a>支持多种过滤条件</h2><p>哪些列在where子句中出现的最频繁，在有更多的不同值的列上创建索引的选择性会更好。</p>
+<p>country列的选择性通常不高，但是很多查询用到，sex的选择性更低，但是很多查询中也会用到。建议将（sex，country）列作为前缀。</p>
+<ul>
+<li>正常情况下是把选择性更高的字段放前面。因为几乎所有的查询都会用到sex字段。也可以使用in（‘male’，‘female’）让mysql来进行选择。所以可以使用（sex，country）作为索引。</li>
+</ul>
+<p><strong>索引设计的基本原则</strong></p>
+<p>当设计索引时，不要只为现有的查询考虑需要哪些索引，还要考虑对查询进行优化。如果发现某些查询需要创建新的索引时，但是这个索引优惠降低另外一些的查询效率，那么应该考虑优化原来的查询。</p>
+<ul>
+<li><p>考虑where条件组合，并了解哪些索引在没有合适的索引的情况下会很慢。</p>
+</li>
+<li><p>age一般是范围查询的，所以age可以放到最后。可以使用IN来代替范围查询。尽可能的将范围查询的列放到索引的后面，以便优化器可以使用更多的列。</p>
+</li>
+</ul>
+<h2 id="避免多个范围条件"><a href="#避免多个范围条件" class="headerlink" title="避免多个范围条件"></a>避免多个范围条件</h2><p>范围条件 actor_id&gt;45, explain 的type是range类型；in（2，3，4）是列表条件，explain 的type也是range类型。</p>
+<p>第一个是范围条件，第二个是多个等值条件查询。<strong>对于范围条件，mysql无法再使用范围列后面的其他索引列了，但是对于多个等值条件查询则没有这个限制。</strong></p>
+<p><img src="/images/mysql/%E5%A4%9A%E4%B8%AA%E8%8C%83%E5%9B%B4%E6%9D%A1%E4%BB%B6%E7%9A%84%E4%BE%8B%E5%AD%90.png" alt="多个范围条件的例子"></p>
+<p>上述查询有2个范围条件，last_online列和age列。可以使用一个它们中的一个索引，但是无法同事使用。</p>
+<h2 id="优化排序"><a href="#优化排序" class="headerlink" title="优化排序"></a>优化排序</h2><p>优化大量翻页的排序的一种方法是限制用户能够翻页的数量；另一种是使用延迟关联，可以使用覆盖索引去查询返回需要的主键，再根据主键关联原表获得需要的行。</p>
+<h1 id="维护索引和表"><a href="#维护索引和表" class="headerlink" title="维护索引和表"></a>维护索引和表</h1><p>即使使用争取的类型创建了表并加上合适的索引，工作也没有结束，还需要维护表和索引来确保他们都正常工作。维护表主要有三个目的：找到并修复损坏的表，维护准确的索引统信息，减少碎片。</p>
+<h2 id="找到并修复损坏的表"><a href="#找到并修复损坏的表" class="headerlink" title="找到并修复损坏的表"></a>找到并修复损坏的表</h2><p>索引损坏会发生一些奇怪的问题，可以使用check table命令来检查是否发生了表损坏，可以使用repair table命令来修复损坏的表，但同样不是所有的存储引擎都支持该命令。可以使用数据备份然后重新导入，如果不是索引损坏了那么就没有用了。</p>
+<p>如果数据损坏，最重要的是找出是什么导致了损坏，而不是简单的修复。</p>
+<h2 id="更新索引统计信息"><a href="#更新索引统计信息" class="headerlink" title="更新索引统计信息"></a>更新索引统计信息</h2><p>mysql的查询优化器会通过两个API来了解存储引擎的索引值的分布信息，以决定如何使用索引。</p>
+<p>1.第一个是records_in_range(),通过向存储引擎传入两个边界值来获取这个范围大概有多少记录。这对于InnoDB来说会返回估算值，而MylSAM会返回精确值；<br>2.第二个是info（），该接口返回各种类型的数据，包括索引的基数（每个键值有多少记录）。</p>
+<p>如果统计信息有误或者不准确，优化器可能会做出错误的决定，可以通过使用analyze table来重新生成统计信息来解决问题。</p>
+<p>不同的存储引擎对统计信息的存储时不同的，memory引擎根本不存储索引统计信息；mylSAM将索引统计信息存储在磁盘，analyze table需要全索引扫面，且整个过程锁表；innoDB不在磁盘存储索引统计信息，而是通过随机访问进行评估并存储在内存中。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; SHOW INDEX FROM t_sys;</span><br><span class="line">+-------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+</span><br><span class="line">| Table | Non_unique | Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment |</span><br><span class="line">+-------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+</span><br><span class="line">| t_sys |          0 | PRIMARY        |            1 | id          | A         |          33 | NULL     | NULL   |      | BTREE      |         |               |</span><br><span class="line">| t_sys |          0 | unique_app_id  |            1 | app_id      | A         |          31 | NULL     | NULL   | YES  | BTREE      |         |               |</span><br><span class="line">| t_sys |          1 | index_sys_name |            1 | sys_name    | A         |          32 | NULL     | NULL   |      | BTREE      |         |               |</span><br><span class="line">+-------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------+</span><br><span class="line">3 rows in set (0.00 sec)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>Cardinality是索引列的基数，显示了存储引擎估算索引列有多少个不同的值。</p>
+<h2 id="减少索引和数据的碎片"><a href="#减少索引和数据的碎片" class="headerlink" title="减少索引和数据的碎片"></a>减少索引和数据的碎片</h2><p>B-Tree索引可能会碎片化，这会降低查询的效率。碎片化的索引可能会以很差或者无序的方式存储在磁盘上。</p>
+<p>表数据的碎片化分为三种：行碎片、行间碎片、剩余空间碎片；</p>
+<ul>
+<li><p>行碎片：这种碎片指的是数据行被存储在多个地方的多个片段中，及时查询只从索引中范文一行记录，行碎片也会导致性能下降；</p>
+</li>
+<li><p>行间碎片：行间碎片是指逻辑上顺序的页，或者行在磁盘上不是顺序存储的。行间碎片对诸如全表扫描和聚簇索引扫描之类的操作有很大影响，因为这些操作原本能够从磁盘上顺序存储的数据中获益。</p>
+</li>
+<li><p>剩余空间碎片：剩余空间碎片是指数据页中有大量的空余空间，这会导致服务器读取大量不需要的数据，从而造成浪费。</p>
+</li>
+</ul>
+<p>对于MylSAM表，这三类碎片都会发生。但是innoDB不会出现短小的行碎片，innoDB会移动短小的行并重新写到一个片段中。</p>
+<p><strong>处理办法</strong></p>
+<p>可以通过执行 optimize table或者导出在导入的方式来整理数据，这对大多数存储引擎是有效的。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>1.大部分情况下都会使用B-tree索引，其它的索引只适合特殊的目的。</p>
+<p>2.在选择和编写利用这些索引的查询时，有如下三个原则需要记住：</p>
+<p><img src="/images/mysql/%E5%88%9B%E5%BB%BA%E7%B4%A2%E5%BC%95%E7%9A%84%E4%B8%89%E4%B8%AA%E5%8E%9F%E5%88%99.png" alt="创建索引的三个原则"></p>
+<p>编写查询语句时尽可能的选择合适的索引以避免单行查找、尽可能的使用数据原生顺序从而避免额外的排序操作、尽可能使用索引覆盖查询；</p>
+<p>3.没有完美的索引时，需要创建大量的索引，（两个列，一个是正序，一个是倒叙，不能达到三星索引）。必须有所取舍选择合适的索引。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/mysql%E7%B4%A2%E5%BC%95/" rel="tag"># mysql索引</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-11-19/%E9%AB%98%E6%80%A7%E8%83%BDmysql-schema%E4%B8%8E%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E4%BC%98%E5%8C%96/" rel="prev" title="高性能mysql-schema与数据类型优化">
+      <i class="fa fa-chevron-left"></i> 高性能mysql-schema与数据类型优化
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-12-06/%E9%AB%98%E6%80%A7%E8%83%BDmyqsl-%E6%9F%A5%E8%AF%A2%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/" rel="next" title="高性能myqsl-查询性能优化">
+      高性能myqsl-查询性能优化 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E5%9F%BA%E7%A1%80"><span class="nav-number">1.</span> <span class="nav-text">索引基础</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E7%9A%84%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.1.</span> <span class="nav-text">索引的类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#B-Tree%E7%B4%A2%E5%BC%95"><span class="nav-number">1.1.1.</span> <span class="nav-text">B-Tree索引</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E5%AF%B9%E5%A6%82%E4%B8%8B%E7%B1%BB%E5%9E%8B%E6%9F%A5%E8%AF%A2%E6%9C%89%E6%95%88"><span class="nav-number">1.1.1.1.</span> <span class="nav-text">索引对如下类型查询有效</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#B-tree%E7%B4%A2%E5%BC%95%E7%9A%84%E9%99%90%E5%88%B6"><span class="nav-number">1.1.1.2.</span> <span class="nav-text">B-tree索引的限制</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%93%88%E5%B8%8C%E7%B4%A2%E5%BC%95"><span class="nav-number">1.1.2.</span> <span class="nav-text">哈希索引</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#hash%E7%B4%A2%E5%BC%95%E7%9A%84%E9%99%90%E5%88%B6"><span class="nav-number">1.1.2.1.</span> <span class="nav-text">hash索引的限制</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A9%BA%E9%97%B4%E6%95%B0%E6%8D%AE%E7%B4%A2%E5%BC%95"><span class="nav-number">1.1.3.</span> <span class="nav-text">空间数据索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%A8%E6%96%87%E7%B4%A2%E5%BC%95"><span class="nav-number">1.1.4.</span> <span class="nav-text">全文索引</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E5%AE%83%E7%B4%A2%E5%BC%95%E7%B1%BB%E5%88%AB"><span class="nav-number">1.1.5.</span> <span class="nav-text">其它索引类别</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E7%9A%84%E4%BC%98%E7%82%B9"><span class="nav-number">2.</span> <span class="nav-text">索引的优点</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E7%82%B9%E5%A6%82%E4%B8%8B%EF%BC%9A"><span class="nav-number">2.1.</span> <span class="nav-text">优点如下：</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%AB%98%E6%80%A7%E8%83%BD%E7%9A%84%E7%B4%A2%E5%BC%95%E7%AD%96%E7%95%A5"><span class="nav-number">3.</span> <span class="nav-text">高性能的索引策略</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%8B%AC%E7%AB%8B%E7%9A%84%E5%88%97"><span class="nav-number">3.1.</span> <span class="nav-text">独立的列</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%89%8D%E7%BC%80%E7%B4%A2%E5%BC%95%E5%92%8C%E7%B4%A2%E5%BC%95%E7%9A%84%E9%80%89%E6%8B%A9%E6%80%A7"><span class="nav-number">3.2.</span> <span class="nav-text">前缀索引和索引的选择性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%9A%E5%88%97%E7%B4%A2%E5%BC%95"><span class="nav-number">3.3.</span> <span class="nav-text">多列索引</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E7%B4%A2%E5%BC%95%E9%A1%BA%E5%BA%8F"><span class="nav-number">3.4.</span> <span class="nav-text">选择合适的索引顺序</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9F%A5%E8%AF%A2%E4%BE%8B%E5%AD%90%EF%BC%9A"><span class="nav-number">3.4.1.</span> <span class="nav-text">查询例子：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95"><span class="nav-number">3.5.</span> <span class="nav-text">聚簇索引</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%E7%9A%84%E4%BC%98%E7%82%B9"><span class="nav-number">3.5.1.</span> <span class="nav-text">聚簇索引的优点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%81%9A%E7%B0%87%E7%B4%A2%E5%BC%95%E7%9A%84%E7%BC%BA%E7%82%B9"><span class="nav-number">3.5.2.</span> <span class="nav-text">聚簇索引的缺点</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9C%A8innoDB%E8%A1%A8%E4%B8%AD%E6%8C%89%E4%B8%BB%E9%94%AE%E9%A1%BA%E5%BA%8F%E6%8F%92%E5%85%A5%E8%A1%8C%E6%88%96UUID%E6%9C%80%E4%B8%BA%E4%B8%BB%E9%94%AE"><span class="nav-number">3.6.</span> <span class="nav-text">在innoDB表中按主键顺序插入行或UUID最为主键</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A1%BA%E5%BA%8F%E7%9A%84%E4%B8%BB%E9%94%AE%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E5%9B%9E%E9%80%A0%E6%88%90%E6%9B%B4%E5%9D%8F%E7%9A%84%E7%BB%93%E6%9E%9C"><span class="nav-number">3.7.</span> <span class="nav-text">顺序的主键什么时候回造成更坏的结果</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95"><span class="nav-number">3.8.</span> <span class="nav-text">覆盖索引</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A6%86%E7%9B%96%E7%B4%A2%E5%BC%95%E7%9A%84%E5%A5%BD%E5%A4%84%EF%BC%88%E4%B8%8D%E9%9C%80%E8%A6%81%E5%9B%9E%E8%A1%A8%E6%9F%A5%E8%AF%A2%EF%BC%89"><span class="nav-number">3.8.1.</span> <span class="nav-text">覆盖索引的好处（不需要回表查询）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">3.8.2.</span> <span class="nav-text">使用场景</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8%E7%B4%A2%E5%BC%95%E6%89%AB%E6%8F%8F%E6%9D%A5%E5%81%9A%E6%8E%92%E5%BA%8F"><span class="nav-number">3.9.</span> <span class="nav-text">使用索引扫描来做排序</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%97%E4%BD%99%E5%92%8C%E9%87%8D%E5%A4%8D%E7%B4%A2%E5%BC%95"><span class="nav-number">3.10.</span> <span class="nav-text">冗余和重复索引</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%97%E4%BD%99%E7%B4%A2%E5%BC%95%E7%9A%84%E6%83%85%E5%86%B5"><span class="nav-number">3.10.1.</span> <span class="nav-text">冗余索引的情况</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E5%92%8C%E9%94%81"><span class="nav-number">3.11.</span> <span class="nav-text">索引和锁</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E6%A1%88%E4%BE%8B%E5%AD%A6%E4%B9%A0"><span class="nav-number">4.</span> <span class="nav-text">索引案例学习</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%94%AF%E6%8C%81%E5%A4%9A%E7%A7%8D%E8%BF%87%E6%BB%A4%E6%9D%A1%E4%BB%B6"><span class="nav-number">4.1.</span> <span class="nav-text">支持多种过滤条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%81%BF%E5%85%8D%E5%A4%9A%E4%B8%AA%E8%8C%83%E5%9B%B4%E6%9D%A1%E4%BB%B6"><span class="nav-number">4.2.</span> <span class="nav-text">避免多个范围条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E6%8E%92%E5%BA%8F"><span class="nav-number">4.3.</span> <span class="nav-text">优化排序</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BB%B4%E6%8A%A4%E7%B4%A2%E5%BC%95%E5%92%8C%E8%A1%A8"><span class="nav-number">5.</span> <span class="nav-text">维护索引和表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%BE%E5%88%B0%E5%B9%B6%E4%BF%AE%E5%A4%8D%E6%8D%9F%E5%9D%8F%E7%9A%84%E8%A1%A8"><span class="nav-number">5.1.</span> <span class="nav-text">找到并修复损坏的表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%B4%E6%96%B0%E7%B4%A2%E5%BC%95%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF"><span class="nav-number">5.2.</span> <span class="nav-text">更新索引统计信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%8F%E5%B0%91%E7%B4%A2%E5%BC%95%E5%92%8C%E6%95%B0%E6%8D%AE%E7%9A%84%E7%A2%8E%E7%89%87"><span class="nav-number">5.3.</span> <span class="nav-text">减少索引和数据的碎片</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
