@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="慢查询日志Redis 的慢查询日志功能用于记录执行时间超过给定时长的命令请求， 用户可以通过这个功能产生的日志来监视和优化查询速度。  slowlog-log-slower-than 选项指定执行时间超过多少微秒（1 秒等于 1,000,000 微秒）的命令请求会被记录到日志上。 slowlog-max-len 选项指定服务器最多保存多少条慢查询日志。( 当服务器储存的慢查询日志数量等于 slow">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis设计与实现-慢查询日志和事务以及二进制数组">
+<meta property="og:url" content="http://chenwj1103.github.io/2018-01-21/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E5%92%8C%E4%BA%8B%E5%8A%A1%E4%BB%A5%E5%8F%8A%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%95%B0%E7%BB%84/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="慢查询日志Redis 的慢查询日志功能用于记录执行时间超过给定时长的命令请求， 用户可以通过这个功能产生的日志来监视和优化查询速度。  slowlog-log-slower-than 选项指定执行时间超过多少微秒（1 秒等于 1,000,000 微秒）的命令请求会被记录到日志上。 slowlog-max-len 选项指定服务器最多保存多少条慢查询日志。( 当服务器储存的慢查询日志数量等于 slow">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenwj1103.github.io/images/redis/transactionbitmap/IMAGE_TRANSACTION_STATE%E4%BA%8B%E5%8A%A1%E7%8A%B6%E6%80%81.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/redis/transactionbitmap/watch%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C%E5%A4%B1%E8%B4%A5%E7%9A%84%E4%BE%8B%E5%AD%90.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/redis/transactionbitmap/%E4%B8%80%E4%B8%AAwatched_keys%E5%AD%97%E5%85%B8.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/redis/transactionbitmap/SDS%E8%A1%A8%E7%A4%BA%E7%9A%84%E4%BD%8D%E6%95%B0%E7%BB%84.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/redis/transactionbitmap/%E4%B8%80%E5%AD%97%E8%8A%82%E9%95%BF%E7%9A%84%E4%BD%8D%E6%95%B0%E7%BB%84%E7%9A%84SDS%E8%A1%A8%E7%A4%BA.png">
+<meta property="article:published_time" content="2018-01-20T18:55:34.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.831Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="redis事务,二进制数组,慢查询日志">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenwj1103.github.io/images/redis/transactionbitmap/IMAGE_TRANSACTION_STATE%E4%BA%8B%E5%8A%A1%E7%8A%B6%E6%80%81.png">
+
+<link rel="canonical" href="http://chenwj1103.github.io/2018-01-21/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E5%92%8C%E4%BA%8B%E5%8A%A1%E4%BB%A5%E5%8F%8A%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%95%B0%E7%BB%84/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>redis设计与实现-慢查询日志和事务以及二进制数组 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2018-01-21/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E5%92%8C%E4%BA%8B%E5%8A%A1%E4%BB%A5%E5%8F%8A%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%95%B0%E7%BB%84/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          redis设计与实现-慢查询日志和事务以及二进制数组
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-01-21 02:55:34" itemprop="dateCreated datePublished" datetime="2018-01-21T02:55:34+08:00">2018-01-21</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/redis/" itemprop="url" rel="index"><span itemprop="name">redis</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>10k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>10 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="慢查询日志"><a href="#慢查询日志" class="headerlink" title="慢查询日志"></a>慢查询日志</h1><p>Redis 的慢查询日志功能用于记录执行时间超过给定时长的命令请求， 用户可以通过这个功能产生的日志来监视和优化查询速度。</p>
+<ol>
+<li>slowlog-log-slower-than 选项指定执行时间超过多少微秒（1 秒等于 1,000,000 微秒）的命令请求会被记录到日志上。</li>
+<li>slowlog-max-len 选项指定服务器最多保存多少条慢查询日志。( 当服务器储存的慢查询日志数量等于 slowlog-max-len 选项的值时， 服务器在添加一条新的慢查询日志之前， 会先将最旧的一条慢查询日志删除。)</li>
+</ol>
+<p>代码demo:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;先将时间设置为0 以使得所有的命令都会记录到慢查询日志里</span><br><span class="line">127.0.0.1:6379&gt; config get slowlog-log-slower-than</span><br><span class="line">1) &quot;slowlog-log-slower-than&quot;</span><br><span class="line">2) &quot;0&quot;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;记录慢查询日志的条数</span><br><span class="line">127.0.0.1:6379&gt; config get slowlog-max-len</span><br><span class="line">1) &quot;slowlog-max-len&quot;</span><br><span class="line">2) &quot;10&quot;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;查询慢日志</span><br><span class="line"></span><br><span class="line">127.0.0.1:6379&gt; slowlog get</span><br><span class="line"> 1) 1) (integer) 9           # 日志的唯一标识符（uid）</span><br><span class="line">    2) (integer) 1516475717  # 命令执行时的 UNIX 时间戳</span><br><span class="line">    3) (integer) 5           # 命令执行的时长，以微秒计算</span><br><span class="line">    4) 1) &quot;slowlog&quot;          # 命令以及命令参数</span><br><span class="line">       2) &quot;ge&quot;</span><br><span class="line"> 2) 1) (integer) 8</span><br><span class="line">    2) (integer) 1516475638</span><br><span class="line">    3) (integer) 49</span><br><span class="line">    4) 1) &quot;config&quot;</span><br><span class="line">       2) &quot;get&quot;</span><br><span class="line">       3) &quot;slowlog-log-slower-than&quot;</span><br><span class="line"> 3) 1) (integer) 7</span><br><span class="line">    2) (integer) 1516475500</span><br><span class="line">    3) (integer) 61</span><br><span class="line">    4) 1) &quot;config&quot;</span><br><span class="line">       2) &quot;get&quot;</span><br><span class="line">       3) &quot;slowlog-max-len&quot;</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="慢查询记录的保存"><a href="#慢查询记录的保存" class="headerlink" title="慢查询记录的保存"></a>慢查询记录的保存</h2><p>服务器状态中包含了几个和慢查询日志功能有关的属性：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">struct redisServer &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; ...</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 下一条慢查询日志的 ID</span><br><span class="line">    long long slowlog_entry_id;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 保存了所有慢查询日志的链表</span><br><span class="line">    list *slowlog;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 服务器配置 slowlog-log-slower-than 选项的值</span><br><span class="line">    long long slowlog_log_slower_than;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 服务器配置 slowlog-max-len 选项的值</span><br><span class="line">    unsigned long slowlog_max_len;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; ...</span><br><span class="line"></span><br><span class="line">&#125;;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>slowlog 链表保存了服务器中的所有慢查询日志， 链表中的每个节点都保存了一个 slowlogEntry 结构， 每个 slowlogEntry 结构代表一条慢查询日志：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">typedef struct slowlogEntry &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 唯一标识符</span><br><span class="line">    long long id;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 命令执行时的时间，格式为 UNIX 时间戳</span><br><span class="line">    time_t time;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 执行命令消耗的时间，以微秒为单位</span><br><span class="line">    long long duration;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 命令与命令参数</span><br><span class="line">    robj **argv;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 命令与命令参数的数量</span><br><span class="line">    int argc;</span><br><span class="line"></span><br><span class="line">&#125; slowlogEntry;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="慢查询日志的阅览和删除"><a href="#慢查询日志的阅览和删除" class="headerlink" title="慢查询日志的阅览和删除"></a>慢查询日志的阅览和删除</h2><p>伪代码实现</p>
+<p>SLOWLOG GET 伪代码实现</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">def SLOWLOG_GET(number&#x3D;None):</span><br><span class="line"></span><br><span class="line">    # 用户没有给定 number 参数</span><br><span class="line">    # 那么打印服务器包含的全部慢查询日志</span><br><span class="line">    if number is None:</span><br><span class="line">        number &#x3D; SLOWLOG_LEN()</span><br><span class="line"></span><br><span class="line">    # 遍历服务器中的慢查询日志</span><br><span class="line">    for log in redisServer.slowlog:</span><br><span class="line"></span><br><span class="line">        if number &lt;&#x3D; 0:</span><br><span class="line">            # 打印的日志数量已经足够，跳出循环</span><br><span class="line">            break</span><br><span class="line">        else:</span><br><span class="line">            # 继续打印，将计数器的值减一</span><br><span class="line">            number -&#x3D; 1</span><br><span class="line"></span><br><span class="line">        # 打印日志</span><br><span class="line">        printLog(log)</span><br></pre></td></tr></table></figure>
+
+<p>SLOWLOG LEN伪代码实现</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">def SLOWLOG_LEN():</span><br><span class="line"></span><br><span class="line">    # slowlog 链表的长度就是慢查询日志的条目数量</span><br><span class="line">    return len(redisServer.slowlog)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>SLOWLOG RESET 伪代码实现</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">def SLOWLOG_RESET():</span><br><span class="line"></span><br><span class="line">    # 遍历服务器中的所有慢查询日志</span><br><span class="line">    for log in redisServer.slowlog:</span><br><span class="line"></span><br><span class="line">        # 删除日志</span><br><span class="line">        deleteLog(log)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<p>例子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;get</span><br><span class="line">127.0.0.1:6379&gt; slowlog get</span><br><span class="line"> 1) 1) (integer) 14</span><br><span class="line">    2) (integer) 1516476187</span><br><span class="line">    3) (integer) 6</span><br><span class="line">    4) 1) &quot;slowlog&quot;</span><br><span class="line">       2) &quot;restt&quot;</span><br><span class="line"> 2) 1) (integer) 13</span><br><span class="line">    2) (integer) 1516476173</span><br><span class="line">    3) (integer) 5</span><br><span class="line">    4) 1) &quot;slowlog&quot;</span><br><span class="line">       2) &quot;len&quot;</span><br><span class="line"> 3) 1) (integer) 12</span><br><span class="line">    2) (integer) 1516476169</span><br><span class="line">    3) (integer) 4</span><br><span class="line">    4) 1) &quot;slowlog&quot;</span><br><span class="line">       2) &quot;len&quot;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; len</span><br><span class="line">127.0.0.1:6379&gt; slowlog len</span><br><span class="line">(integer) 10</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; reset</span><br><span class="line"></span><br><span class="line">127.0.0.1:6379&gt; slowlog reset</span><br><span class="line">OK</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="添加新日志"><a href="#添加新日志" class="headerlink" title="添加新日志"></a>添加新日志</h2><p>在每次执行命令的之前和之后， 程序都会记录微秒格式的当前 UNIX 时间戳， 这两个时间戳之间的差就是服务器执行命令所耗费的时长， 服务器会将这个时长作为参数之一传给 slowlogPushEntryIfNeeded 函数， 而 slowlogPushEntryIfNeeded 函数则负责检查是否需要为这次执行的命令创建慢查询日志， 以下伪代码展示了这一过程：</p>
+<p>伪代码实现</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 记录执行命令前的时间</span><br><span class="line">before &#x3D; unixtime_now_in_us()</span><br><span class="line"></span><br><span class="line"># 执行命令</span><br><span class="line">execute_command(argv, argc, client)</span><br><span class="line"></span><br><span class="line"># 记录执行命令后的时间</span><br><span class="line">after &#x3D; unixtime_now_in_us()</span><br><span class="line"></span><br><span class="line"># 检查是否需要创建新的慢查询日志</span><br><span class="line">slowlogPushEntryIfNeeded(argv, argc, before-after)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>slowlogPushEntryIfNeeded函数检查slowlog-log-slower-than和slowlog-max-len这两个参数及做出相应的操作.</p>
+<h1 id="监视器"><a href="#监视器" class="headerlink" title="监视器"></a>监视器</h1><p>通过执行 MONITOR 命令， 客户端可以将自己变为一个监视器， 实时地接收并打印出服务器当前处理的命令请求的相关信息：</p>
+<p>每当一个客户端向服务器发送一条命令请求时， 服务器除了会处理这条命令请求之外， 还会将关于这条命令请求的信息发送给所有监视器</p>
+<p>实例:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;监视器对象客户端</span><br><span class="line">127.0.0.1:6379&gt; MONITOR</span><br><span class="line">OK</span><br><span class="line">1516477049.121659 [0 127.0.0.1:58004] &quot;ping&quot;  &#x2F;&#x2F;在1516477049.121659个时间点,根据 IP 为 127.0.0.1 、端口号为 56604 的客户端发送的命令请求， 对 0 号数据库执行命令ping</span><br><span class="line">1516477085.685457 [0 127.0.0.1:58004] &quot;set&quot; &quot;testkey&quot; &quot;test&quot;</span><br><span class="line">1516477099.400328 [0 127.0.0.1:58004] &quot;get&quot; &quot;testkey&quot;</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;执行命令的客户端</span><br><span class="line">127.0.0.1:6379&gt; ping</span><br><span class="line">PONG</span><br><span class="line">127.0.0.1:6379&gt; set testkey test</span><br><span class="line">OK</span><br><span class="line">127.0.0.1:6379&gt; get testkey</span><br><span class="line">&quot;test&quot;</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="成为监视器"><a href="#成为监视器" class="headerlink" title="成为监视器"></a>成为监视器</h2><p>伪代码实现</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">def MONITOR():</span><br><span class="line"></span><br><span class="line">    # 打开客户端的监视器标志</span><br><span class="line">    client.flags |&#x3D; REDIS_MONITOR</span><br><span class="line"></span><br><span class="line">    # 将客户端添加到服务器状态的 monitors 链表的末尾</span><br><span class="line">    server.monitors.append(client)</span><br><span class="line"></span><br><span class="line">    # 向客户端返回 OK</span><br><span class="line">    send_reply(&quot;OK&quot;)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="向监视器发送命令信息"><a href="#向监视器发送命令信息" class="headerlink" title="向监视器发送命令信息"></a>向监视器发送命令信息</h2><p>服务器在每次处理命令请求之前， 都会调用 replicationFeedMonitors 函数， 由这个函数将被处理命令请求的相关信息发送给各个监视器。</p>
+<p>replicationFeedMonitors 函数的伪代码:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">def replicationFeedMonitors(client, monitors, dbid, argv, argc):</span><br><span class="line"></span><br><span class="line">    # 根据执行命令的客户端、当前数据库的号码、命令参数、命令参数个数等参数</span><br><span class="line">    # 创建要发送给各个监视器的信息</span><br><span class="line">    msg &#x3D; create_message(client, dbid, argv, argc)</span><br><span class="line"></span><br><span class="line">    # 遍历所有监视器</span><br><span class="line">    for monitor in monitors:</span><br><span class="line"></span><br><span class="line">        # 将信息发送给监视器</span><br><span class="line">        send_message(monitor, msg)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h1 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h1><p>redis通过multi/exec/watch等命令来实现事务(transaction)功能.</p>
+<p>实例demo:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; multi</span><br><span class="line">OK</span><br><span class="line">127.0.0.1:6379&gt; set name &quot;practical common listp&quot;</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; get name</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; set author &quot;peter seibel&quot;</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; get author</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; exec</span><br><span class="line">1) OK</span><br><span class="line">2) &quot;practical common listp&quot;</span><br><span class="line">3) OK</span><br><span class="line">4) &quot;peter seibel&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="事务的实现"><a href="#事务的实现" class="headerlink" title="事务的实现"></a>事务的实现</h2><p>事务的实现会经历三个阶段:</p>
+<ol>
+<li>事务开始;</li>
+<li>命令入队;</li>
+<li>事务执行</li>
+</ol>
+<h3 id="事务开始"><a href="#事务开始" class="headerlink" title="事务开始"></a>事务开始</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">redis&gt; MULTI</span><br><span class="line">OK</span><br></pre></td></tr></table></figure>
+
+<p>MULTI 命令可以将执行该命令的客户端从非事务状态切换至事务状态， 这一切换是通过在客户端状态的 flags 属性中打开 REDIS_MULTI 标识来完成的</p>
+<p>伪代码实现</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">def MULTI():</span><br><span class="line"></span><br><span class="line">    # 打开事务标识</span><br><span class="line">    client.flags |&#x3D; REDIS_MULTI</span><br><span class="line"></span><br><span class="line">    # 返回 OK 回复</span><br><span class="line">    replyOK()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="命令入队"><a href="#命令入队" class="headerlink" title="命令入队"></a>命令入队</h3><p>当一个客户端处于非事务状态时， 这个客户端发送的命令会立即被服务器执行,</p>
+<p>当一个客户端切换到事务状态之后， 服务器会根据这个客户端发来的不同命令执行不同的操作:</p>
+<ol>
+<li>如果客户端发送的命令为 EXEC 、 DISCARD 、 WATCH 、 MULTI 四个命令的其中一个， 那么服务器立即执行这个命令。</li>
+<li>如果客户端发送的命令是 EXEC 、 DISCARD 、 WATCH 、 MULTI 四个命令以外的其他命令， 那么服务器并不立即执行这个命令， 而是将这个命令放入一个事务队列里面， 然后向客户端返回 QUEUED 回复。</li>
+</ol>
+<h3 id="事务队列"><a href="#事务队列" class="headerlink" title="事务队列"></a>事务队列</h3><p>Redis 客户端都有自己的事务状态， 这个事务状态保存在客户端状态的 mstate 属性里面</p>
+<p>事务状态的状态结构:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">typedef struct redisClient &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; ...</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 事务状态</span><br><span class="line">    multiState mstate;      &#x2F;* MULTI&#x2F;EXEC state *&#x2F;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; ...</span><br><span class="line"></span><br><span class="line">&#125; redisClient;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>事务队列的结构:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">typedef struct multiState &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 事务队列，FIFO 顺序</span><br><span class="line">    multiCmd *commands;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 已入队命令计数</span><br><span class="line">    int count;</span><br><span class="line"></span><br><span class="line">&#125; multiState;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>事务队列是一个 multiCmd 类型的数组， 数组中的每个 multiCmd 结构都保存了一个已入队命令的相关信息:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">typedef struct multiCmd &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 参数</span><br><span class="line">    robj **argv;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 参数数量</span><br><span class="line">    int argc;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 命令指针</span><br><span class="line">    struct redisCommand *cmd;</span><br><span class="line"></span><br><span class="line">&#125; multiCmd;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/redis/transactionbitmap/IMAGE_TRANSACTION_STATE%E4%BA%8B%E5%8A%A1%E7%8A%B6%E6%80%81.png" alt="IMAGE_TRANSACTION_STATE事务状态"></p>
+<h3 id="执行事务"><a href="#执行事务" class="headerlink" title="执行事务"></a>执行事务</h3><p>当一个处于事务状态的客户端向服务器发送 EXEC 命令时， 这个 EXEC 命令将立即被服务器执行： 服务器会遍历这个客户端的事务队列， 执行队列中保存的所有命令， 最后将执行命令所得的结果全部返回给客户端。</p>
+<p>EXEC 命令的实现原理可以用以下伪代码来描述：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">def EXEC():</span><br><span class="line"></span><br><span class="line">    # 创建空白的回复队列</span><br><span class="line">    reply_queue &#x3D; []</span><br><span class="line"></span><br><span class="line">    # 遍历事务队列中的每个项</span><br><span class="line">    # 读取命令的参数，参数的个数，以及要执行的命令</span><br><span class="line">    for argv, argc, cmd in client.mstate.commands:</span><br><span class="line"></span><br><span class="line">        # 执行命令，并取得命令的返回值</span><br><span class="line">        reply &#x3D; execute_command(cmd, argv, argc)</span><br><span class="line"></span><br><span class="line">        # 将返回值追加到回复队列末尾</span><br><span class="line">        reply_queue.append(reply)</span><br><span class="line"></span><br><span class="line">    # 移除 REDIS_MULTI 标识，让客户端回到非事务状态</span><br><span class="line">    client.flags &amp;&#x3D; ~REDIS_MULTI</span><br><span class="line"></span><br><span class="line">    # 清空客户端的事务状态，包括：</span><br><span class="line">    # 1）清零入队命令计数器</span><br><span class="line">    # 2）释放事务队列</span><br><span class="line">    client.mstate.count &#x3D; 0</span><br><span class="line">    release_transaction_queue(client.mstate.commands)</span><br><span class="line"></span><br><span class="line">    # 将事务的执行结果返回给客户端</span><br><span class="line">    send_reply_to_client(client, reply_queue)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="WATCH-命令的实现"><a href="#WATCH-命令的实现" class="headerlink" title="WATCH 命令的实现"></a>WATCH 命令的实现</h2><p>WATCH 命令是一个乐观锁,它可以在exec命令执行之前.监视任意数量的数据库键,并在exec命令执行时,检查被监视的键是否至少有一个已经被修改过了,如果是的话,服务器拒绝执行事务,并向服务器端返回代表事务执行失败的空回复.</p>
+<p><img src="/images/redis/transactionbitmap/watch%E5%91%BD%E4%BB%A4%E6%89%A7%E8%A1%8C%E5%A4%B1%E8%B4%A5%E7%9A%84%E4%BE%8B%E5%AD%90.png" alt="watch命令执行失败的例子"></p>
+<p>在T5时执行exec,服务器会发现watch监视的键”name” 已经发生了变化,则拒绝执行A的事务.</p>
+<h3 id="使用watch命令监听数据库键"><a href="#使用watch命令监听数据库键" class="headerlink" title="使用watch命令监听数据库键"></a>使用watch命令监听数据库键</h3><p>每个redis数据库保存着一个watched_keys字典,这个字典的键是某个被watch命令监视的数据库键,值则是一个链表,链表记录了所监视的相应数据库键的客户端.</p>
+<p>以下是watched_keys字典的实例.通过watch关键字可以使得key和客户端在watched_keys字典中进行关联.</p>
+<p><img src="/images/redis/transactionbitmap/%E4%B8%80%E4%B8%AAwatched_keys%E5%AD%97%E5%85%B8.png" alt="一个watched_keys字典"></p>
+<h3 id="监视机制的触发"><a href="#监视机制的触发" class="headerlink" title="监视机制的触发"></a>监视机制的触发</h3><p>对数据库进行写操作的时候,都会调用touchWatchKey函数进行检查,检查是否客户端正在监视刚刚被命令修改过的数据库键.如果有的话,那么该函数会将监视被修改键的客户端的REDIS_DIRTY_CAS 标示打开,标示客户端的事务的安全性被破坏.</p>
+<h3 id="判断事务是否安全"><a href="#判断事务是否安全" class="headerlink" title="判断事务是否安全"></a>判断事务是否安全</h3><p>在服务器收到一个客户端发过来的exec命令时,服务器检查这个客户端是否打开 REDIS_DIRTY_CAS.打开了则放弃执行,没打开则执行.</p>
+<h3 id="一个完整事务的执行过程"><a href="#一个完整事务的执行过程" class="headerlink" title="一个完整事务的执行过程"></a>一个完整事务的执行过程</h3><p>一个C1的客户端在执行watch name命令后,watch_keys字典的当前状态为name–C1;接下来客户端C1执行如下命令</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">C1&gt;multi</span><br><span class="line">OK</span><br><span class="line"></span><br><span class="line">C1&gt;set name &quot;peter&quot;</span><br><span class="line">QUEUED</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>这时,C2客户端执行set name “test” 命令,C2执行这个set命令会导致那些正在监视name键的客户端的REDIS_DIRTY_CAS标示被打开,其中包括C1客户端</p>
+<p>之后,C1执行exec操作,发现REDIS_DIRTY_CAS处于打开的状态,则服务器拒绝它提交事务.</p>
+<h2 id="事务的-ACID-性质"><a href="#事务的-ACID-性质" class="headerlink" title="事务的 ACID 性质"></a>事务的 ACID 性质</h2><p>事务的原子性,一致性,隔离性和持久性简称ACID可以检查事务的可靠性和安全性.</p>
+<h3 id="原子性"><a href="#原子性" class="headerlink" title="原子性"></a>原子性</h3><p>要么全部执行,要么不执行.下面的例子中事务有错误的命令,所以事务中的所有命令不可以执行.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; multi </span><br><span class="line">OK</span><br><span class="line">127.0.0.1:6379&gt; get name</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; get</span><br><span class="line">(error) ERR wrong number of arguments for &#39;get&#39; command</span><br><span class="line">127.0.0.1:6379&gt; get message</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; exec</span><br><span class="line">(error) EXECABORT Transaction discarded because of previous errors.</span><br><span class="line">127.0.0.1:6379&gt; </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>redis的事务和传统的关系型数据库最大区别在于不支持事务的回滚机制.</p>
+<h3 id="一致性"><a href="#一致性" class="headerlink" title="一致性"></a>一致性</h3><p>事务的一致性是指,数据库的状态在事务执行之前和执行之后(无论是否成功)都是一致的.</p>
+<h4 id="入队错误"><a href="#入队错误" class="headerlink" title="入队错误"></a>入队错误</h4><p>在入队的过程中出现错误,则redis拒绝执行该事务.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; multi</span><br><span class="line">OK</span><br><span class="line">127.0.0.1:6379&gt; set name test</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; ddd</span><br><span class="line">(error) ERR unknown command &#39;ddd&#39;</span><br><span class="line">127.0.0.1:6379&gt; exec</span><br><span class="line">(error) EXECABORT Transaction discarded because of previous errors.</span><br><span class="line">127.0.0.1:6379&gt; </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="执行错误"><a href="#执行错误" class="headerlink" title="执行错误"></a>执行错误</h4><p>比如一个type为String类型的键,执行了lpush操作.在入队时是发现不了的.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; type name</span><br><span class="line">string</span><br><span class="line">127.0.0.1:6379&gt; multi</span><br><span class="line">OK</span><br><span class="line">127.0.0.1:6379&gt; lpush name 1 2 3</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; get name</span><br><span class="line">QUEUED</span><br><span class="line">127.0.0.1:6379&gt; exec</span><br><span class="line">1) (error) WRONGTYPE Operation against a key holding the wrong kind of value</span><br><span class="line">2) &quot;test&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>出错的命令会被服务器识别出来,不去执行,所以不会对数据库造成影响.</p>
+<h3 id="隔离性"><a href="#隔离性" class="headerlink" title="隔离性"></a>隔离性</h3><p>事务的隔离性是指,即使数据库中有多个事务并发的执行,各个事务之间也不会互相的影响.并且并发状态下执行的事务和串行执行的事务产生的结果完全相同.</p>
+<p>由于redis是单线程的,所以事务的执行都是串行的,所以事务是具有隔离性的.</p>
+<h3 id="持久性"><a href="#持久性" class="headerlink" title="持久性"></a>持久性</h3><p>事务的持久性是指,当一个事务执行完毕时,执行这个事务的结果已经被永久的保存到数据库中了,即使服务器停机,结果也不会丢失.</p>
+<p>redis事务只是简单的将命令包裹在一起,并没有提供持久化的功能.具体是否持久化到硬盘是有redis的持久化机制决定的.所以redis是否持久化是与redis事务没有关系的.</p>
+<h1 id="二进制位数组"><a href="#二进制位数组" class="headerlink" title="二进制位数组"></a>二进制位数组</h1><p>redis提供了SETBIT GETBIT BITCOUNT BITOP四个命令用于处理二进制输入(位数组)</p>
+<p>setbit命令用于为位数组指定偏移量上的二进制位设置值,位数组的<strong>偏移量从0开始计数</strong>,而<strong>二进制位的值则可以是0或者1</strong>.返回该位置原先的值.</p>
+<p>例子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; setbit bit 0 1</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit bit 3 1</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit bit 0 0</span><br><span class="line">(integer) 1</span><br></pre></td></tr></table></figure>
+
+<p>getbit则用于获取位数组指定偏移量上的二进制位的值.</p>
+<p>例子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; getbit bit 100</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; getbit bit 0</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; getbit bit 3</span><br><span class="line">(integer) 1</span><br></pre></td></tr></table></figure>
+
+<p>bitcount 用于统计位数组里面,值为1的二进制位的数量.</p>
+<p>例子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; bitcount bit 0 -1</span><br><span class="line">(integer) 1</span><br><span class="line">127.0.0.1:6379&gt; </span><br></pre></td></tr></table></figure>
+
+<p>bitcount 命令可以对多个位数组进行按位与(and) 或(or) 异或(xor)运算</p>
+<p>与运算：0&amp;0=0;  0&amp;1=0;   1&amp;0=0;    1&amp;1=1;(两位同时为“1”，结果才为“1”，否则为0)<br>或运算: 0|0=0；  0|1=1；  1|0=1；   1|1=1；(参加运算的两个对象只要有一个为1，其值为1。)<br>异或运算:0^0=0；  0^1=1；  1^0=1；   1^1=0；(参加运算的两个对象，如果两个相应位为“异”（值不同），则该位结果为1，否则为0。)</p>
+<p>例子:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:6379&gt; setbit x 3 1   x &#x3D;0000 1011</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit x 1 1</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit x 0 1</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit y 2 1   y &#x3D;0000 0110</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit y 1 1</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit z 2 1   z &#x3D;0000 0101</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; setbit z 0 1</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; bitop and resultand x y z   0000 0000</span><br><span class="line">(integer) 1</span><br><span class="line">127.0.0.1:6379&gt; bitcount resultand 0  -1</span><br><span class="line">(integer) 0</span><br><span class="line">127.0.0.1:6379&gt; bitop or resultor x y z     0000 1111</span><br><span class="line">(integer) 1</span><br><span class="line">127.0.0.1:6379&gt; bitcount resultor 0 -1</span><br><span class="line">(integer) 4</span><br><span class="line">127.0.0.1:6379&gt; bitop xor resultxor x y z  0000 1000</span><br><span class="line">(integer) 1</span><br><span class="line">127.0.0.1:6379&gt; bitcount resultxor 0 -1</span><br><span class="line">(integer) 1</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="位数组的表示"><a href="#位数组的表示" class="headerlink" title="位数组的表示"></a>位数组的表示</h2><p>位数组采用字符串对象表示.</p>
+<p><img src="/images/redis/transactionbitmap/SDS%E8%A1%A8%E7%A4%BA%E7%9A%84%E4%BD%8D%E6%95%B0%E7%BB%84.png" alt="SDS表示的位数组"></p>
+<p>redisObject.type的值为REDIS_STRING</p>
+<p>sdshdr.len的值为1</p>
+<p>buf数组中的buf[0]表示存了一字节畅的位数组.</p>
+<p>buf数组中的buf[1]字节保存了SDS程序自动追加到值末尾的空字符串’\0’</p>
+<p><img src="/images/redis/transactionbitmap/%E4%B8%80%E5%AD%97%E8%8A%82%E9%95%BF%E7%9A%84%E4%BD%8D%E6%95%B0%E7%BB%84%E7%9A%84SDS%E8%A1%A8%E7%A4%BA.png" alt="一字节长的位数组的SDS表示"></p>
+<h2 id="GETBIT命令的实现"><a href="#GETBIT命令的实现" class="headerlink" title="GETBIT命令的实现"></a>GETBIT命令的实现</h2><p>getbit <bitarray> <offset></p>
+<ol>
+<li>计算byte=(offset/8) byte值记录了offset偏移量指定的二进制位保存在数组的哪个字节;</li>
+<li>计算bit=(offset mod 8) +1 ,bit位记录了offset偏移量指定的二进制位是byte字节的第几个二进制位;</li>
+<li>根据byte值和bit值.在位数组bitarray中定位offset偏移量制定的二进制位.并返回这个位的值;</li>
+</ol>
+<p>例子:</p>
+<p>GETBIT <bitarray> 3</p>
+<ol>
+<li><p>3/8 的值为0.</p>
+</li>
+<li><p>(3 mod 8) +1的值为4</p>
+</li>
+<li><p>定位到buf[0]字节上面.人后去除第四个二进制位的值为1 返回给客户端</p>
+</li>
+</ol>
+<p>以上操作都在常数时间内完成,时间复杂度为O(1)</p>
+<h2 id="SETBIT命令的实现"><a href="#SETBIT命令的实现" class="headerlink" title="SETBIT命令的实现"></a>SETBIT命令的实现</h2><p>SET <bitarray> <offset> <value></p>
+<ol>
+<li>len =(offset/8)+1 计算出需要多少字节;</li>
+<li>检查bitarray键保存的长度是否小于len,如果是的话则扩展空间为len字节,并将所有的新空间的二进制位设置为0</li>
+<li>计算byte=(offset/8) byte值记录了offset偏移量指定的二进制位保存的位数在哪个字节上</li>
+<li>bit= (offset mod 8)+1 bit记录了偏移量指定的二进制位是byte字节的第几个二进制位;</li>
+<li>byte值和bit值,在bitarray键保存的位数组中定位offset偏移量指定的二进制位,先将保存新值,然后返回旧值给客户端.</li>
+</ol>
+<h2 id="BITCOUNT命令的实现"><a href="#BITCOUNT命令的实现" class="headerlink" title="BITCOUNT命令的实现"></a>BITCOUNT命令的实现</h2><p>bitcount <bitarray></p>
+<p>计算二进制数组中1的个数</p>
+<p>算法:</p>
+<p>采用的是查表和variable-precisionSWAR两种算法.具体细节可自行查阅资料.</p>
+<h2 id="BITOP命令"><a href="#BITOP命令" class="headerlink" title="BITOP命令"></a>BITOP命令</h2><p>采用的是计算机的位运算符操作,将结果放到给定的键上</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/redis%E4%BA%8B%E5%8A%A1-%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%95%B0%E7%BB%84-%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97/" rel="tag"># redis事务,二进制数组,慢查询日志</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-01-21/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E5%8F%91%E5%B8%83%E4%B8%8E%E8%AE%A2%E9%98%85/" rel="prev" title="redis设计与实现-发布与订阅">
+      <i class="fa fa-chevron-left"></i> redis设计与实现-发布与订阅
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-01-23/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E6%8E%92%E5%BA%8F/" rel="next" title="redis设计与实现-排序">
+      redis设计与实现-排序 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97"><span class="nav-number">1.</span> <span class="nav-text">慢查询日志</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%85%A2%E6%9F%A5%E8%AF%A2%E8%AE%B0%E5%BD%95%E7%9A%84%E4%BF%9D%E5%AD%98"><span class="nav-number">1.1.</span> <span class="nav-text">慢查询记录的保存</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%85%A2%E6%9F%A5%E8%AF%A2%E6%97%A5%E5%BF%97%E7%9A%84%E9%98%85%E8%A7%88%E5%92%8C%E5%88%A0%E9%99%A4"><span class="nav-number">1.2.</span> <span class="nav-text">慢查询日志的阅览和删除</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B7%BB%E5%8A%A0%E6%96%B0%E6%97%A5%E5%BF%97"><span class="nav-number">1.3.</span> <span class="nav-text">添加新日志</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%9B%91%E8%A7%86%E5%99%A8"><span class="nav-number">2.</span> <span class="nav-text">监视器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%88%90%E4%B8%BA%E7%9B%91%E8%A7%86%E5%99%A8"><span class="nav-number">2.1.</span> <span class="nav-text">成为监视器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%91%E7%9B%91%E8%A7%86%E5%99%A8%E5%8F%91%E9%80%81%E5%91%BD%E4%BB%A4%E4%BF%A1%E6%81%AF"><span class="nav-number">2.2.</span> <span class="nav-text">向监视器发送命令信息</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1"><span class="nav-number">3.</span> <span class="nav-text">事务</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.1.</span> <span class="nav-text">事务的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E5%BC%80%E5%A7%8B"><span class="nav-number">3.1.1.</span> <span class="nav-text">事务开始</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%91%BD%E4%BB%A4%E5%85%A5%E9%98%9F"><span class="nav-number">3.1.2.</span> <span class="nav-text">命令入队</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E9%98%9F%E5%88%97"><span class="nav-number">3.1.3.</span> <span class="nav-text">事务队列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E4%BA%8B%E5%8A%A1"><span class="nav-number">3.1.4.</span> <span class="nav-text">执行事务</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#WATCH-%E5%91%BD%E4%BB%A4%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.2.</span> <span class="nav-text">WATCH 命令的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8watch%E5%91%BD%E4%BB%A4%E7%9B%91%E5%90%AC%E6%95%B0%E6%8D%AE%E5%BA%93%E9%94%AE"><span class="nav-number">3.2.1.</span> <span class="nav-text">使用watch命令监听数据库键</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%91%E8%A7%86%E6%9C%BA%E5%88%B6%E7%9A%84%E8%A7%A6%E5%8F%91"><span class="nav-number">3.2.2.</span> <span class="nav-text">监视机制的触发</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A4%E6%96%AD%E4%BA%8B%E5%8A%A1%E6%98%AF%E5%90%A6%E5%AE%89%E5%85%A8"><span class="nav-number">3.2.3.</span> <span class="nav-text">判断事务是否安全</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E4%B8%AA%E5%AE%8C%E6%95%B4%E4%BA%8B%E5%8A%A1%E7%9A%84%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B"><span class="nav-number">3.2.4.</span> <span class="nav-text">一个完整事务的执行过程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BA%8B%E5%8A%A1%E7%9A%84-ACID-%E6%80%A7%E8%B4%A8"><span class="nav-number">3.3.</span> <span class="nav-text">事务的 ACID 性质</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8E%9F%E5%AD%90%E6%80%A7"><span class="nav-number">3.3.1.</span> <span class="nav-text">原子性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E8%87%B4%E6%80%A7"><span class="nav-number">3.3.2.</span> <span class="nav-text">一致性</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%85%A5%E9%98%9F%E9%94%99%E8%AF%AF"><span class="nav-number">3.3.2.1.</span> <span class="nav-text">入队错误</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E9%94%99%E8%AF%AF"><span class="nav-number">3.3.2.2.</span> <span class="nav-text">执行错误</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%9A%94%E7%A6%BB%E6%80%A7"><span class="nav-number">3.3.3.</span> <span class="nav-text">隔离性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8C%81%E4%B9%85%E6%80%A7"><span class="nav-number">3.3.4.</span> <span class="nav-text">持久性</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E8%BF%9B%E5%88%B6%E4%BD%8D%E6%95%B0%E7%BB%84"><span class="nav-number">4.</span> <span class="nav-text">二进制位数组</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%8D%E6%95%B0%E7%BB%84%E7%9A%84%E8%A1%A8%E7%A4%BA"><span class="nav-number">4.1.</span> <span class="nav-text">位数组的表示</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#GETBIT%E5%91%BD%E4%BB%A4%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.2.</span> <span class="nav-text">GETBIT命令的实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SETBIT%E5%91%BD%E4%BB%A4%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.3.</span> <span class="nav-text">SETBIT命令的实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BITCOUNT%E5%91%BD%E4%BB%A4%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.4.</span> <span class="nav-text">BITCOUNT命令的实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#BITOP%E5%91%BD%E4%BB%A4"><span class="nav-number">4.5.</span> <span class="nav-text">BITOP命令</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

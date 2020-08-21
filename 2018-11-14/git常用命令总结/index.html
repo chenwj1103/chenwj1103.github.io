@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="克隆代码将远端的git项目拉取到本地： 12git clone resource_url   正常的开发流程123456789101112131415161718192021222324251.在master分支拉取远端分支的代码到本地，以保证新创建的分支的时候是最新的代码；git pull origin master  2.查看最新的tag，因为开发分支名字的后缀tag是基于最新的tag开出来的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="git常用命令总结">
+<meta property="og:url" content="http://chenwj1103.github.io/2018-11-14/git%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E6%80%BB%E7%BB%93/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="克隆代码将远端的git项目拉取到本地： 12git clone resource_url   正常的开发流程123456789101112131415161718192021222324251.在master分支拉取远端分支的代码到本地，以保证新创建的分支的时候是最新的代码；git pull origin master  2.查看最新的tag，因为开发分支名字的后缀tag是基于最新的tag开出来的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://chenwj1103.github.io/images/git/ssh-key.png">
+<meta property="og:image" content="http://chenwj1103.github.io/images/git/gitlab-setting.png">
+<meta property="article:published_time" content="2018-11-14T08:47:04.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.819Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="git命令总结">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://chenwj1103.github.io/images/git/ssh-key.png">
+
+<link rel="canonical" href="http://chenwj1103.github.io/2018-11-14/git%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E6%80%BB%E7%BB%93/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>git常用命令总结 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2018-11-14/git%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E6%80%BB%E7%BB%93/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          git常用命令总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-11-14 16:47:04" itemprop="dateCreated datePublished" datetime="2018-11-14T16:47:04+08:00">2018-11-14</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/git/" itemprop="url" rel="index"><span itemprop="name">git</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="克隆代码"><a href="#克隆代码" class="headerlink" title="克隆代码"></a>克隆代码</h1><p>将远端的git项目拉取到本地：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git clone resource_url</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="正常的开发流程"><a href="#正常的开发流程" class="headerlink" title="正常的开发流程"></a>正常的开发流程</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">1.在master分支拉取远端分支的代码到本地，以保证新创建的分支的时候是最新的代码；</span><br><span class="line">git pull origin master </span><br><span class="line"> </span><br><span class="line">2.查看最新的tag，因为开发分支名字的后缀tag是基于最新的tag开出来的，加入最新的tag是1.1.1</span><br><span class="line">git tag</span><br><span class="line"></span><br><span class="line">3.创建新的分支 </span><br><span class="line"></span><br><span class="line">git checkout -b br_test_develop_1.1.1</span><br><span class="line"></span><br><span class="line">4.进行开发</span><br><span class="line">。。。。</span><br><span class="line"></span><br><span class="line">5.查看代码的状态</span><br><span class="line"> git status</span><br><span class="line"> </span><br><span class="line">6.&#39;.&#39;代表当前目录下的所有文件， 也是可以只是添加某一个文件到stage缓存区</span><br><span class="line">git add . 或者 git add files </span><br><span class="line"></span><br><span class="line">7.把 stage 缓存生成一次 commit，并加入 commit 历史, - m是添加注释</span><br><span class="line">git commit -m &quot;commit message&quot;</span><br><span class="line"></span><br><span class="line">8.将新的分支push到远端，将新的commit代码push到远端。</span><br><span class="line">git push origin br_test_develop_1.1.1</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="修改提交日志"><a href="#修改提交日志" class="headerlink" title="修改提交日志"></a>修改提交日志</h2><p>假如你执行 commit -m 时记录的日志描述和本次执行commit的功能不符合，又不想创建新的commit，此时可以使用一下命令。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">git commit --amend  </span><br><span class="line"></span><br><span class="line">然后使用 vim编辑操作</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="上线项目需要做的操作"><a href="#上线项目需要做的操作" class="headerlink" title="上线项目需要做的操作"></a>上线项目需要做的操作</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">这里假设开发分支为 br_test_develop_1.1.1 。</span><br><span class="line"></span><br><span class="line">1. 先拉取br_test_develop_1.1.1的远端代码，</span><br><span class="line">git pull origin br_test_develop_1.1.1</span><br><span class="line"></span><br><span class="line">2. 然后切换到master分支,拉取master分支的远端代码</span><br><span class="line">git checkout master</span><br><span class="line">git pull origin master</span><br><span class="line"></span><br><span class="line">3. 切换到br_test_develop_1.1.1分支，merge master的代码到br_test_develop_1.1.1,有冲突解决冲突，提交到远端。（防止开发的代码污染master分支，这一步不可以省略。）</span><br><span class="line">git checkout br_test_develop_1.1.1</span><br><span class="line">git merge master</span><br><span class="line">git push origin br_test_develop_1.1.1</span><br><span class="line"></span><br><span class="line">4. 切换到master分支，merge br_test_develop_1.1.1的代码到master分支。</span><br><span class="line">git checkout master</span><br><span class="line">git merge br_test_develop_1.1.1</span><br><span class="line">git push origin master</span><br><span class="line"></span><br><span class="line">5. 确认当前分支是master，且是最新的代码。查看tag，上线的tag在最新的基础上命名一个，或者按照版本需要创建一个tag。</span><br><span class="line">git fetch -all &#x2F;&#x2F; 这将更新git remote 中所有的远程repo 所包含分支的最新commit-id，包括tag</span><br><span class="line">git tag  &#x2F;&#x2F; 查看tag 列表</span><br><span class="line">git tag 1.1.2  &#x2F;&#x2F;创建本地tag为1.1.2</span><br><span class="line">git push --tag &#x2F;&#x2F; push tag 到远端</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="情景1：本地开发着，需要合并远端的开发分支的代码"><a href="#情景1：本地开发着，需要合并远端的开发分支的代码" class="headerlink" title="情景1：本地开发着，需要合并远端的开发分支的代码"></a>情景1：本地开发着，需要合并远端的开发分支的代码</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">1. stash存储本地的开发中的代码</span><br><span class="line">git add .</span><br><span class="line">git stash</span><br><span class="line"></span><br><span class="line">2. 执行rebase命令，拉取远端代码重建base</span><br><span class="line">git pull --rebase</span><br><span class="line"></span><br><span class="line">3. 取出stash的代码，pop命令会取出并删除stash的代码（最近的一次）</span><br><span class="line">git stash pop </span><br><span class="line"></span><br><span class="line">4. 手动解决冲突 并add .</span><br><span class="line">git add .</span><br><span class="line"></span><br><span class="line">5. 结束reabse模式，如果此时提示No rebase in progress?则表示已经没有冲突了；否则上面两步要重复多次或者执行 git rebase --abort</span><br><span class="line">git rebase --continue 或者 git rebase --abort</span><br><span class="line"></span><br><span class="line">6. 提交代码到远端</span><br><span class="line">git status</span><br><span class="line">git add .</span><br><span class="line">git commit -m “commit message”</span><br><span class="line">git push origin &#39;branchName&#39;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="情景2：git-reset-回退到某次提交的代码"><a href="#情景2：git-reset-回退到某次提交的代码" class="headerlink" title="情景2：git reset 回退到某次提交的代码"></a>情景2：git reset 回退到某次提交的代码</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">1. 查看log日志，取出要取消的某次操作的commitId</span><br><span class="line">git log</span><br><span class="line"></span><br><span class="line">2. 执行reset操作 </span><br><span class="line">git reset --hard &lt;commitId&gt; </span><br><span class="line">或者 </span><br><span class="line">git reset --hard HEAD~2 &#x2F;&#x2F;回退两个commitId</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">3. 强制提交到远端 (-f 慎重使用)</span><br><span class="line">git push origin &lt;branchName&gt; -f</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><code>注意</code>：reset参数。<b>add 是将代码添加工作区，commit是将代码添加到缓存区</b></p>
+<ul>
+<li>-soft – 缓存区和工作目录都不会被改变(执行了add和commit)</li>
+<li>–mixed – 默认选项。缓存区和你指定的提交同步，但工作目录不受影响（只是add 未commit） </li>
+<li>–hard – 缓存区和工作目录都同步到你指定的提交(代码都没有了)（代码都没有了）</li>
+</ul>
+<h2 id="情景3：-git-revert-取消某次的提交-merge版本的commit无法处理"><a href="#情景3：-git-revert-取消某次的提交-merge版本的commit无法处理" class="headerlink" title="情景3： git revert 取消某次的提交(merge版本的commit无法处理)"></a>情景3： git revert 取消某次的提交(merge版本的commit无法处理)</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">1. 查看log日志，取出要取消的某次操作的commitId</span><br><span class="line">git log</span><br><span class="line"></span><br><span class="line">2. 执行reset操作</span><br><span class="line">git revert -n &lt;commitId&gt;</span><br><span class="line"></span><br><span class="line">3. commit push</span><br><span class="line">git commit -m “commit message”</span><br><span class="line">git push origin &lt;branchName&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="情景4：本地正开发着，需要切换到别的分支，此时可以将代码stash到缓存区"><a href="#情景4：本地正开发着，需要切换到别的分支，此时可以将代码stash到缓存区" class="headerlink" title="情景4：本地正开发着，需要切换到别的分支，此时可以将代码stash到缓存区"></a>情景4：本地正开发着，需要切换到别的分支，此时可以将代码stash到缓存区</h2><p>git-stash - Stash the changes in a dirty working directory away</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">git add .</span><br><span class="line"></span><br><span class="line">git stash &#x2F;&#x2F;Stash the changes in a dirty working directory away</span><br><span class="line"></span><br><span class="line">git stash list &#x2F;&#x2F;查看缓存记录</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;需要恢复缓存的代码到工作区. 其中stashId可以在git stash list 命令展示的列表中查看</span><br><span class="line">git stash pop 或者 git stash apply stashId</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; 清除缓存 </span><br><span class="line">git stash clear  或者 git stash drop  stashId</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><code>建议</code>： stash缓存使用完请及时clear，时间久了可能容易忘记stash的内容，恢复的时候造成冲突。</p>
+<h2 id="关于分支的常用操作"><a href="#关于分支的常用操作" class="headerlink" title="关于分支的常用操作"></a>关于分支的常用操作</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">1. 拉取远端的分支代码，因为默认down代码的时候，不是获取所有远端的最新的代码</span><br><span class="line"> git fetch --all</span><br><span class="line"></span><br><span class="line">2. 查看远端、本地的分支，以及所有分支</span><br><span class="line">git branch &#x2F;&#x2F;查看本地分支</span><br><span class="line">git branch -r &#x2F;&#x2F; -r代码remote，所有的远端分支。</span><br><span class="line">git branch -a &#x2F;&#x2F;查看所有的分支</span><br><span class="line"></span><br><span class="line">3. 一般情况下，远端分支和本地分支是同名的，如果不是同名的需要查看本地分支追踪的远端分支如何查看。</span><br><span class="line">git branch -vv</span><br><span class="line"></span><br><span class="line">4. 如何设置本地追踪的远端分支</span><br><span class="line">git branch --set-upstream-to&#x3D;origin&#x2F;&lt;branch&gt; master</span><br><span class="line"></span><br><span class="line">5. 删除在本地有但在远程库中已经不存在的分支</span><br><span class="line">git remtte prune origin </span><br><span class="line"></span><br><span class="line">6. 删除本地分支</span><br><span class="line">git branch -d &lt;branchName&gt;</span><br><span class="line"></span><br><span class="line">7. 删除远端分支 (必须有权限)</span><br><span class="line">git push origin --delete &lt;branchName&gt;  </span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="关于标签的操作"><a href="#关于标签的操作" class="headerlink" title="关于标签的操作"></a>关于标签的操作</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">1. 查看标签列表 之前要执行git fetch --all 拉取远端的分支以及tag到本地</span><br><span class="line">git tag</span><br><span class="line"></span><br><span class="line">2. 查看tag的详细信息,打标签的人以及时间</span><br><span class="line">git show &lt;tagName&gt;</span><br><span class="line"></span><br><span class="line">3. 打标签</span><br><span class="line">git tag &lt;tagName&gt; &#x2F;&#x2F; 在本地的当前commitId节点处创建一个tag标签</span><br><span class="line">或者</span><br><span class="line">git tag -a &lt;tagName&gt; -m &quot;commit message&quot;</span><br><span class="line"></span><br><span class="line">4. 删除本地标签</span><br><span class="line">git tag -d &lt;tagName&gt;</span><br><span class="line"></span><br><span class="line">5. 删除远端分支</span><br><span class="line">git push origin --delete &lt;tagName&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h2 id="创建新的项目提交到gitlab上"><a href="#创建新的项目提交到gitlab上" class="headerlink" title="创建新的项目提交到gitlab上"></a>创建新的项目提交到gitlab上</h2><ol>
+<li>需要在gitlab上操作创建一个项目</li>
+<li>配置用户名和邮箱</li>
+</ol>
+<h3 id="已有项目添加到远端"><a href="#已有项目添加到远端" class="headerlink" title="已有项目添加到远端"></a>已有项目添加到远端</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">1. 计入文件夹，初始化为git项目</span><br><span class="line">cd existing_folder</span><br><span class="line">git init</span><br><span class="line"></span><br><span class="line">2. 本地和远端进行关联</span><br><span class="line">git remote add origin http:&#x2F;&#x2F;172.16.117.224&#x2F;ent_teach&#x2F;ent-test.git</span><br><span class="line"></span><br><span class="line">3. 执行 add commit push 操作</span><br><span class="line">git add .</span><br><span class="line">git commit -m &quot;Initial commit&quot;</span><br><span class="line">git push -u origin master</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="创建一个新项目"><a href="#创建一个新项目" class="headerlink" title="创建一个新项目"></a>创建一个新项目</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">1. 克隆远端项目</span><br><span class="line">git clone http:&#x2F;&#x2F;172.16.117.224&#x2F;ent_teach&#x2F;ent-test.git</span><br><span class="line"></span><br><span class="line">2. 进入相应的目录，添加README.md文件。执行 add commit push 操作</span><br><span class="line">cd ent-test</span><br><span class="line">touch README.md</span><br><span class="line">git add README.md</span><br><span class="line">git commit -m &quot;add README&quot;</span><br><span class="line">git push -u origin master</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="解决冲突的技巧"><a href="#解决冲突的技巧" class="headerlink" title="解决冲突的技巧"></a>解决冲突的技巧</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">这一篇解释了手动解决冲突时&lt;&lt;&lt;&lt;和&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;的含义 </span><br><span class="line">一般情况下rebase都是会有冲突的，详细查看冲突可以用命令git status然后就会显示哪个文件有冲突，然后打开有冲突的哪个文件，会发现有一些“&lt;&lt;&lt;&lt;&lt;&lt;&lt;”， “&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;”， “&gt;&gt;&gt;&gt;&gt;&gt;&gt;” 这样的符号。</span><br><span class="line"></span><br><span class="line">“&lt;&lt;&lt;&lt;&lt;&lt;&lt;” 表示冲突代码开始</span><br><span class="line"></span><br><span class="line">“&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;” 表示test与master冲突代码分隔符</span><br><span class="line"></span><br><span class="line">“&gt;&gt;&gt;&gt;&gt;&gt;&gt;&quot; 表示冲突代码的结束</span><br><span class="line"></span><br><span class="line">&lt;&lt;&lt;&lt;&lt;&lt;&lt;  </span><br><span class="line">所以这一块区域test的代码</span><br><span class="line"></span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;  </span><br><span class="line">这一块区域master的代码</span><br><span class="line"></span><br><span class="line">&gt;&gt;&gt;&gt;&gt;&gt;&gt; </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">1. 查看日志</span><br><span class="line">git log  &#x2F;&#x2F;显示的是commitId以及commit Message</span><br><span class="line"></span><br><span class="line">2.查看状态</span><br><span class="line">git status</span><br><span class="line"></span><br><span class="line">3. 快速查看旧版本</span><br><span class="line">git checkout commitId</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="gitlab配置ssh-key"><a href="#gitlab配置ssh-key" class="headerlink" title="gitlab配置ssh key"></a>gitlab配置ssh key</h2><p>1.打开本地git bash,使用如下命令生成ssh公钥和私钥对</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -C &#39;xxx@xxx.com&#39; 然后一路回车(-C 参数是你的邮箱地址)</span><br></pre></td></tr></table></figure>
+<p><img src="/images/git/ssh-key.png" alt="ssh-key"></p>
+<p>2.然后打开<del>/.ssh/id_rsa.pub文件(</del>表示用户目录，比如我的windows就是C:\Users\Administrator)，复制其中的内容</p>
+<p>3.打开gitlab,找到Profile Settings–&gt;SSH Keys—&gt;Add SSH Key,并把上一步中复制的内容粘贴到Key所对应的文本框，在Title对应的文本框中给这个sshkey设置一个名字，点击Add key按钮</p>
+<p><img src="/images/git/gitlab-setting.png" alt="gitlab-setting"></p>
+<ol start="4">
+<li>到此就完成了gitlab配置ssh key的所有步骤，我们就可以愉快的使用ssh协议进行代码的拉取以及提交等操作了</li>
+</ol>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/ToDoToTry/p/4095626.html">git fetch 与git pull的区别</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/TTKatrina/article/details/79288238">git rebase的用法</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/yxlshk/article/details/79944535">git revert与git reset操作详解</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/ouber23/articles/5466040.html">暂存区与工作区</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/git%E5%91%BD%E4%BB%A4%E6%80%BB%E7%BB%93/" rel="tag"># git命令总结</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-11-12/%E9%AB%98%E6%80%A7%E8%83%BDmysql-Mysql%E7%9A%84%E6%9E%B6%E6%9E%84%E5%92%8C%E5%8E%86%E5%8F%B2/" rel="prev" title="高性能mysql-Mysql的架构和历史">
+      <i class="fa fa-chevron-left"></i> 高性能mysql-Mysql的架构和历史
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-11-19/%E9%AB%98%E6%80%A7%E8%83%BDmysql-schema%E4%B8%8E%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E4%BC%98%E5%8C%96/" rel="next" title="高性能mysql-schema与数据类型优化">
+      高性能mysql-schema与数据类型优化 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%8B%E9%9A%86%E4%BB%A3%E7%A0%81"><span class="nav-number">1.</span> <span class="nav-text">克隆代码</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AD%A3%E5%B8%B8%E7%9A%84%E5%BC%80%E5%8F%91%E6%B5%81%E7%A8%8B"><span class="nav-number">1.1.</span> <span class="nav-text">正常的开发流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9%E6%8F%90%E4%BA%A4%E6%97%A5%E5%BF%97"><span class="nav-number">1.2.</span> <span class="nav-text">修改提交日志</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8A%E7%BA%BF%E9%A1%B9%E7%9B%AE%E9%9C%80%E8%A6%81%E5%81%9A%E7%9A%84%E6%93%8D%E4%BD%9C"><span class="nav-number">1.3.</span> <span class="nav-text">上线项目需要做的操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%83%85%E6%99%AF1%EF%BC%9A%E6%9C%AC%E5%9C%B0%E5%BC%80%E5%8F%91%E7%9D%80%EF%BC%8C%E9%9C%80%E8%A6%81%E5%90%88%E5%B9%B6%E8%BF%9C%E7%AB%AF%E7%9A%84%E5%BC%80%E5%8F%91%E5%88%86%E6%94%AF%E7%9A%84%E4%BB%A3%E7%A0%81"><span class="nav-number">1.4.</span> <span class="nav-text">情景1：本地开发着，需要合并远端的开发分支的代码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%83%85%E6%99%AF2%EF%BC%9Agit-reset-%E5%9B%9E%E9%80%80%E5%88%B0%E6%9F%90%E6%AC%A1%E6%8F%90%E4%BA%A4%E7%9A%84%E4%BB%A3%E7%A0%81"><span class="nav-number">1.5.</span> <span class="nav-text">情景2：git reset 回退到某次提交的代码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%83%85%E6%99%AF3%EF%BC%9A-git-revert-%E5%8F%96%E6%B6%88%E6%9F%90%E6%AC%A1%E7%9A%84%E6%8F%90%E4%BA%A4-merge%E7%89%88%E6%9C%AC%E7%9A%84commit%E6%97%A0%E6%B3%95%E5%A4%84%E7%90%86"><span class="nav-number">1.6.</span> <span class="nav-text">情景3： git revert 取消某次的提交(merge版本的commit无法处理)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%83%85%E6%99%AF4%EF%BC%9A%E6%9C%AC%E5%9C%B0%E6%AD%A3%E5%BC%80%E5%8F%91%E7%9D%80%EF%BC%8C%E9%9C%80%E8%A6%81%E5%88%87%E6%8D%A2%E5%88%B0%E5%88%AB%E7%9A%84%E5%88%86%E6%94%AF%EF%BC%8C%E6%AD%A4%E6%97%B6%E5%8F%AF%E4%BB%A5%E5%B0%86%E4%BB%A3%E7%A0%81stash%E5%88%B0%E7%BC%93%E5%AD%98%E5%8C%BA"><span class="nav-number">1.7.</span> <span class="nav-text">情景4：本地正开发着，需要切换到别的分支，此时可以将代码stash到缓存区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E4%BA%8E%E5%88%86%E6%94%AF%E7%9A%84%E5%B8%B8%E7%94%A8%E6%93%8D%E4%BD%9C"><span class="nav-number">1.8.</span> <span class="nav-text">关于分支的常用操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E4%BA%8E%E6%A0%87%E7%AD%BE%E7%9A%84%E6%93%8D%E4%BD%9C"><span class="nav-number">1.9.</span> <span class="nav-text">关于标签的操作</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E6%96%B0%E7%9A%84%E9%A1%B9%E7%9B%AE%E6%8F%90%E4%BA%A4%E5%88%B0gitlab%E4%B8%8A"><span class="nav-number">1.10.</span> <span class="nav-text">创建新的项目提交到gitlab上</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E6%9C%89%E9%A1%B9%E7%9B%AE%E6%B7%BB%E5%8A%A0%E5%88%B0%E8%BF%9C%E7%AB%AF"><span class="nav-number">1.10.1.</span> <span class="nav-text">已有项目添加到远端</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E6%96%B0%E9%A1%B9%E7%9B%AE"><span class="nav-number">1.10.2.</span> <span class="nav-text">创建一个新项目</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E5%86%B2%E7%AA%81%E7%9A%84%E6%8A%80%E5%B7%A7"><span class="nav-number">1.11.</span> <span class="nav-text">解决冲突的技巧</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B6%E5%AE%83"><span class="nav-number">1.12.</span> <span class="nav-text">其它</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#gitlab%E9%85%8D%E7%BD%AEssh-key"><span class="nav-number">1.13.</span> <span class="nav-text">gitlab配置ssh key</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83"><span class="nav-number">1.14.</span> <span class="nav-text">参考</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
