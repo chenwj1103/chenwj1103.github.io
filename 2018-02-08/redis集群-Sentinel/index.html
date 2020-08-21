@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"chenwj1103.github.io","root":"/","scheme":"Muse","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="简介Redis Sentinel是用来实现Redis(2.8+)高可用的一套解决方案。Redis Sentinel由两个部分组成：由一个或者多个Sentinel实例组成Sentinel系统；由一个主Redis服务器(Master Redis)和多个从Redis服务器(Slave Redis)组成主从备份的Redis系统。 Sentinel系统本身是一个分布式的系统，它的作用是监视Redis服务器，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis集群-Sentinel">
+<meta property="og:url" content="http://chenwj1103.github.io/2018-02-08/redis%E9%9B%86%E7%BE%A4-Sentinel/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="简介Redis Sentinel是用来实现Redis(2.8+)高可用的一套解决方案。Redis Sentinel由两个部分组成：由一个或者多个Sentinel实例组成Sentinel系统；由一个主Redis服务器(Master Redis)和多个从Redis服务器(Slave Redis)组成主从备份的Redis系统。 Sentinel系统本身是一个分布式的系统，它的作用是监视Redis服务器，">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-02-07T16:58:20.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.834Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="redis sentinel">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://chenwj1103.github.io/2018-02-08/redis%E9%9B%86%E7%BE%A4-Sentinel/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>redis集群-Sentinel | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://chenwj1103.github.io/2018-02-08/redis%E9%9B%86%E7%BE%A4-Sentinel/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          redis集群-Sentinel
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-02-08 00:58:20" itemprop="dateCreated datePublished" datetime="2018-02-08T00:58:20+08:00">2018-02-08</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/redis/" itemprop="url" rel="index"><span itemprop="name">redis</span></a>
+                </span>
+            </span>
+
+          <br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>12k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>11 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h1><p>Redis Sentinel是用来实现Redis(2.8+)高可用的一套解决方案。Redis Sentinel由两个部分组成：由一个或者多个Sentinel实例组成Sentinel系统；<strong>由一个主Redis服务器</strong>(Master Redis)和多个从Redis服务器(Slave Redis)组成主从备份的Redis系统。</p>
+<p>Sentinel系统本身是一个分布式的系统，它的作用是监视Redis服务器，在Master Redis下线时，自动将某个Slave Redis提升为新的主服务器。Redis系统由Master Redis处理客户端的命令请求，Slave Redis作为主服务器的备份而存在。</p>
+<h1 id="Redis-Sentinel主要作用"><a href="#Redis-Sentinel主要作用" class="headerlink" title="Redis Sentinel主要作用"></a>Redis Sentinel主要作用</h1><ul>
+<li>监控(Monitoring)：Sentinel 会不断地检查你的主服务器和从服务器是否运作正常。</li>
+<li>提醒(Notification)：当被监控的某个Redis服务器出现问题时， Sentinel可以通过API向管理员或者其他应用程序发送通知。</li>
+<li>自动故障迁移(Automatic failover)：当一个主服务器不能正常工作时， Sentinel会开始一次自动故障迁移操作，它会将失效主服务器的其中一个从服务器升级为新的主服务器，并让失效主服务器的其他从服务器改为复制新的主服务器；当客户端试图连接失效的主服务器时，集群也会向客户端返回新主服务器的地址，使得集群可以使用新主服务器代替失效服务器。</li>
+</ul>
+<h1 id="构建Redis-Sentinel集群"><a href="#构建Redis-Sentinel集群" class="headerlink" title="构建Redis Sentinel集群"></a>构建Redis Sentinel集群</h1><p>主多从的Redis系统中，可以使用多个Sentinel进行监控任务以保证系统足够稳健。此时，不仅Sentinel会同时监控主数据库和从数据库，Sentinel之间也会相互监控.</p>
+<h2 id="redis服务器配置-redis-conf文件"><a href="#redis服务器配置-redis-conf文件" class="headerlink" title="redis服务器配置 redis.conf文件"></a>redis服务器配置 redis.conf文件</h2><p>主节点(由于主从节点有可能切换所以涉及密码的两个参数每个节点都需要配置)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">port 7000</span><br><span class="line">requirepass test</span><br><span class="line">masterauth test</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>从节点1 </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">port 7001</span><br><span class="line">requirepass test</span><br><span class="line">masterauth test</span><br><span class="line">slaveof 127.0.0.1 7000</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>从节点2</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">port 7002</span><br><span class="line">requirepass test</span><br><span class="line">masterauth test</span><br><span class="line">slaveof 127.0.0.1 7000</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="配置Sentinel-conf-三个文件只有port和日志目录不一样"><a href="#配置Sentinel-conf-三个文件只有port和日志目录不一样" class="headerlink" title="配置Sentinel.conf (三个文件只有port和日志目录不一样)"></a>配置Sentinel.conf (三个文件只有port和日志目录不一样)</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">bind 127.0.0.1</span><br><span class="line">port 27000</span><br><span class="line">sentinel monitor mymaster 127.0.0.1 7000 2</span><br><span class="line">sentinel down-after-milliseconds mymaster 5000</span><br><span class="line">sentinel failover-timeout mymaster 180000</span><br><span class="line">sentinel parallel-syncs mymaster 2</span><br><span class="line">sentinel auth-pass mymaster test</span><br><span class="line">logfile &quot;&#x2F;usr&#x2F;local&#x2F;redisSentinel&#x2F;7000&#x2F;sentinelLog&#x2F;log.log&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="配置文件解释"><a href="#配置文件解释" class="headerlink" title="配置文件解释"></a>配置文件解释</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">port 27000</span><br><span class="line">Sentinel实例之间的通讯端口，该端口号默认为26379。</span><br><span class="line"></span><br><span class="line">bind 127.0.0.1</span><br><span class="line">Sentinel默认会绑定到127.0.0.1，这里要在多台机器间通信，我们将它绑定到主机IP上。</span><br><span class="line"></span><br><span class="line">sentinel monitor mymaster 127.0.0.1 7000 2</span><br><span class="line">Sentinel去监视一个名为mymaster的主服务器，这个主服务器的IP地址为127.0.0.1  ，端口号为7000。将这个主服务器判断为失效至少需要2个Sentinel同意，一般设置为N&#x2F;2+1(N为Sentinel总数)。只要同意Sentinel的数量不达标，自动故障迁移就不会执行。</span><br><span class="line"></span><br><span class="line">不过要注意，无论你设置要多少个Sentinel同意才能判断一个服务器失效， 一个Sentinel都需要获得系统中多数Sentinel的支持，才能发起一次自动故障迁移，并预留一个给定的配置纪元。(configuration Epoch ，一个配置纪元就是一个新主服务器配置的版本号)。</span><br><span class="line"></span><br><span class="line">sentinel down-after-milliseconds mymaster 5000</span><br><span class="line">down-after-milliseconds选项指定了Sentinel认为服务器已经断线所需的毫秒数。如果服务器在给定的毫秒数之内，没有返回Sentinel发送的PING命令的回复，或者返回一个错误，那么Sentinel将这个服务器标记为主观下线(subjectively down，简称SDOWN)。</span><br><span class="line"></span><br><span class="line">不过只有一个Sentinel将服务器标记为主观下线并不一定会引起服务器的自动故障迁移，只有在足够数量的Sentinel都将一个服务器标记为主观下线之后，服务器才会被标记为客观下线(objectively down，简称ODOWN)， 这时自动故障迁移才会执行。将服务器标记为客观下线所需的Sentinel数量由对主服务器的配置(sentinel monitor参数)决定。</span><br><span class="line"></span><br><span class="line">sentinel failover-timeout mymaster 180000</span><br><span class="line">如果在多少毫秒内没有把宕掉的那台Master恢复，那Sentinel认为这是一次真正的宕机。在下一次选取时排除该宕掉的Master作为可用的节点，然后等待一定的设定值的毫秒数后再来探测该节点是否恢复，如果恢复就把它作为一台Slave加入Sentinel监测节点群，并在下一次切换时为他分配一个”选取号”。</span><br><span class="line"></span><br><span class="line">sentinel parallel-syncs mymaster 2</span><br><span class="line">parallel-syncs选项指定了在执行故障转移时，最多可以有多少个从服务器同时对新的主服务器进行同步。这个数字越小，完成故障转移所需的时间就越长。</span><br><span class="line"></span><br><span class="line">如果从服务器被设置为允许使用过期数据集(slave-serve-stale-data选项)， 那么你可能不希望所有从服务器都在同一时间向新的主服务器发送同步请求。因为尽管复制过程的绝大部分步骤都不会阻塞从服务器，但从服务器在载入主服务器发来的RDB文件时，仍然会造成从服务器在一段时间内不能处理命令请求。</span><br><span class="line"></span><br><span class="line">如果全部从服务器一起对新的主服务器进行同步，那么就可能会造成所有从服务器在短时间内全部不可用的情况出现。你可以通过将这个值设为1来保证每次只有一个从服务器处于不能处理命令请求的状态。</span><br><span class="line"></span><br><span class="line">sentinel auth-pass mymaster test</span><br><span class="line">当Master设置了密码时，Sentinel连接Master和Slave时需要通过设置参数auth-pass配置相应密码。</span><br><span class="line"></span><br><span class="line">logfile &#x2F;usr&#x2F;local&#x2F;redisSentinel&#x2F;7000&#x2F;sentinelLog&#x2F;log.log</span><br><span class="line">日志文件所在位置，</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="启动sentinel集群"><a href="#启动sentinel集群" class="headerlink" title="启动sentinel集群"></a>启动sentinel集群</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo .&#x2F;src&#x2F;redis-sentinel sentinel.conf &amp;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="通过redis客户端工具查看当前Sentinel的信息"><a href="#通过redis客户端工具查看当前Sentinel的信息" class="headerlink" title="通过redis客户端工具查看当前Sentinel的信息"></a>通过redis客户端工具查看当前Sentinel的信息</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisSentinel&#x2F;7000$ .&#x2F;src&#x2F;redis-cli -p 27000 -h 127.0.0.1 INFO Sentinel</span><br><span class="line"># Sentinel</span><br><span class="line">sentinel_masters:1</span><br><span class="line">sentinel_tilt:0</span><br><span class="line">sentinel_running_scripts:0</span><br><span class="line">sentinel_scripts_queue_length:0</span><br><span class="line">sentinel_simulate_failure_flags:0</span><br><span class="line">master0:name&#x3D;mymaster,status&#x3D;ok,address&#x3D;127.0.0.1:7000,slaves&#x3D;2,sentinels&#x3D;3</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="Sentinel启动后会输出类似的日志"><a href="#Sentinel启动后会输出类似的日志" class="headerlink" title="Sentinel启动后会输出类似的日志"></a>Sentinel启动后会输出类似的日志</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">21    6839:X 09 Feb 01:14:11.494 # Sentinel ID is b9095b246a20441e432f693f9b9042d7bb605372</span><br><span class="line">22    6839:X 09 Feb 01:14:11.494 # +monitor master mymaster 127.0.0.1 7000 quorum 2</span><br><span class="line">23    6839:X 09 Feb 01:14:11.495 * +slave slave 127.0.0.1:7001 127.0.0.1 7001 @ mymaster 127.0.0.1 7000</span><br><span class="line">24    6839:X 09 Feb 01:14:11.527 * +slave slave 127.0.0.1:7002 127.0.0.1 7002 @ mymaster 127.0.0.1 7000</span><br><span class="line">25    6839:X 09 Feb 01:18:56.295 * +sentinel sentinel 5a18eecd2dcb3ce949a30d15e12dc4e14d3dc73b 127.0.0.1 27001 @ mymaster 127.0.0.1 7000</span><br><span class="line">26    6839:X 09 Feb 01:20:54.521 * +sentinel sentinel 7df87dde32ceeced13dfd020f99c914414b9f474 127.0.0.1 27002 @ mymaster 127.0.0.1 7000</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>+slave和+sentinel分别代表成功发现了从数据库和其他Sentinel。</p>
+<h2 id="sentinel-conf文件生成信息"><a href="#sentinel-conf文件生成信息" class="headerlink" title="sentinel.conf文件生成信息"></a>sentinel.conf文件生成信息</h2><p>重新打开sentinel.conf文件，发现Sentinel自动生成了一些信息，记录了监控过程中的状态变化。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">199    # Generated by CONFIG REWRITE</span><br><span class="line">200    sentinel config-epoch mymaster 0</span><br><span class="line">201    sentinel leader-epoch mymaster 0</span><br><span class="line">202    sentinel known-slave mymaster 127.0.0.1 7001</span><br><span class="line">203    sentinel known-slave mymaster 127.0.0.1 7002</span><br><span class="line">204    sentinel known-sentinel mymaster 127.0.0.1 27002 7df87dde32ceeced13dfd020f99c914414b9f474</span><br><span class="line">205    sentinel known-sentinel mymaster 127.0.0.1 27001 5a18eecd2dcb3ce949a30d15e12dc4e14d3dc73b</span><br><span class="line">206    sentinel current-epoch 0</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="查看Sentinel监控的主从服务器"><a href="#查看Sentinel监控的主从服务器" class="headerlink" title="查看Sentinel监控的主从服务器"></a>查看Sentinel监控的主从服务器</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisSentinel&#x2F;7000$ .&#x2F;src&#x2F;redis-cli -h 127.0.0.1 -p 27000 </span><br><span class="line">127.0.0.1:27000&gt; sentinel master mymaster</span><br><span class="line"> 1) &quot;name&quot;</span><br><span class="line"> 2) &quot;mymaster&quot;</span><br><span class="line"> 3) &quot;ip&quot;</span><br><span class="line"> 4) &quot;127.0.0.1&quot;</span><br><span class="line"> 5) &quot;port&quot;</span><br><span class="line"> 6) &quot;7000&quot;</span><br><span class="line"> 7) &quot;runid&quot;</span><br><span class="line"> 8) &quot;1d998c438067f7fd3ad51742380bf16257fd0877&quot;</span><br><span class="line"> 9) &quot;flags&quot;</span><br><span class="line">10) &quot;master&quot;</span><br><span class="line">11) &quot;link-pending-commands&quot;</span><br><span class="line">12) &quot;0&quot;</span><br><span class="line">13) &quot;link-refcount&quot;</span><br><span class="line">14) &quot;1&quot;</span><br><span class="line">15) &quot;last-ping-sent&quot;</span><br><span class="line">16) &quot;0&quot;</span><br><span class="line">17) &quot;last-ok-ping-reply&quot;</span><br><span class="line">18) &quot;168&quot;</span><br><span class="line">19) &quot;last-ping-reply&quot;</span><br><span class="line">20) &quot;168&quot;</span><br><span class="line">21) &quot;down-after-milliseconds&quot;</span><br><span class="line">22) &quot;5000&quot;</span><br><span class="line">23) &quot;info-refresh&quot;</span><br><span class="line">24) &quot;6675&quot;</span><br><span class="line">25) &quot;role-reported&quot;</span><br><span class="line">26) &quot;master&quot;</span><br><span class="line">27) &quot;role-reported-time&quot;</span><br><span class="line">28) &quot;1804688&quot;</span><br><span class="line">29) &quot;config-epoch&quot;</span><br><span class="line">30) &quot;0&quot;</span><br><span class="line">31) &quot;num-slaves&quot;</span><br><span class="line">32) &quot;2&quot;</span><br><span class="line">33) &quot;num-other-sentinels&quot;</span><br><span class="line">34) &quot;2&quot;</span><br><span class="line">35) &quot;quorum&quot;</span><br><span class="line">36) &quot;2&quot;</span><br><span class="line">37) &quot;failover-timeout&quot;</span><br><span class="line">38) &quot;180000&quot;</span><br><span class="line">39) &quot;parallel-syncs&quot;</span><br><span class="line">40) &quot;2&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h1 id="Sentinel验证"><a href="#Sentinel验证" class="headerlink" title="Sentinel验证"></a>Sentinel验证</h1><p>我们让7000节点上的mymaster主动休眠30秒来观察failover过程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ redis-cli -p 7000 -h 127.0.0.1 -a test DEBUG sleep 30</span><br></pre></td></tr></table></figure>
+<p>日志如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisSentinel&#x2F;7000$ .&#x2F;src&#x2F;redis-cli -p 7000 -h 127.0.0.1 -a test DEBUG sleep 30</span><br><span class="line">5303:M 09 Feb 01:47:41.392 # Connection with master lost.</span><br><span class="line">5303:M 09 Feb 01:47:41.393 * Caching the disconnected master state.</span><br><span class="line">5303:M 09 Feb 01:47:41.393 * Discarding previously cached master state.</span><br><span class="line">5303:M 09 Feb 01:47:41.393 * MASTER MODE enabled (user request from &#39;id&#x3D;5 addr&#x3D;127.0.0.1:36346 fd&#x3D;8 name&#x3D;sentinel-5a18eecd-cmd age&#x3D;1727 idle&#x3D;0 flags&#x3D;x db&#x3D;0 sub&#x3D;0 psub&#x3D;0 multi&#x3D;3 qbuf&#x3D;0 qbuf-free&#x3D;32768 obl&#x3D;36 oll&#x3D;0 omem&#x3D;0 events&#x3D;r cmd&#x3D;exec&#39;)</span><br><span class="line">5303:M 09 Feb 01:47:41.395 # CONFIG REWRITE executed with success.</span><br><span class="line">5303:M 09 Feb 01:47:41.463 * 1 changes in 900 seconds. Saving...</span><br><span class="line">5303:M 09 Feb 01:47:41.464 * Background saving started by pid 9725</span><br><span class="line">9725:C 09 Feb 01:47:41.506 * DB saved on disk</span><br><span class="line">9725:C 09 Feb 01:47:41.507 * RDB: 8 MB of memory used by copy-on-write</span><br><span class="line">5303:M 09 Feb 01:47:41.565 * Background saving terminated with success</span><br><span class="line">5312:S 09 Feb 01:47:42.196 # Connection with master lost.</span><br><span class="line">5312:S 09 Feb 01:47:42.196 * Caching the disconnected master state.</span><br><span class="line">5312:S 09 Feb 01:47:42.196 * Discarding previously cached master state.</span><br><span class="line">5312:S 09 Feb 01:47:42.197 * SLAVE OF 127.0.0.1:7001 enabled (user request from &#39;id&#x3D;5 addr&#x3D;127.0.0.1:38372 fd&#x3D;8 name&#x3D;sentinel-5a18eecd-cmd age&#x3D;1728 idle&#x3D;0 flags&#x3D;x db&#x3D;0 sub&#x3D;0 psub&#x3D;0 multi&#x3D;3 qbuf&#x3D;133 qbuf-free&#x3D;32635 obl&#x3D;36 oll&#x3D;0 omem&#x3D;0 events&#x3D;r cmd&#x3D;exec&#39;)</span><br><span class="line">5312:S 09 Feb 01:47:42.200 # CONFIG REWRITE executed with success.</span><br><span class="line">5312:S 09 Feb 01:47:42.284 * 1 changes in 900 seconds. Saving...</span><br><span class="line">5312:S 09 Feb 01:47:42.286 * Background saving started by pid 9726</span><br><span class="line">5312:S 09 Feb 01:47:42.286 * Connecting to MASTER 127.0.0.1:7001</span><br><span class="line">5312:S 09 Feb 01:47:42.287 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">5312:S 09 Feb 01:47:42.287 * Non blocking connect for SYNC fired the event.</span><br><span class="line">5312:S 09 Feb 01:47:42.287 * Master replied to PING, replication can continue...</span><br><span class="line">5312:S 09 Feb 01:47:42.287 * Partial resynchronization not possible (no cached master)</span><br><span class="line">5303:M 09 Feb 01:47:42.287 * Slave 127.0.0.1:7002 asks for synchronization</span><br><span class="line">5303:M 09 Feb 01:47:42.287 * Full resync requested by slave 127.0.0.1:7002</span><br><span class="line">5303:M 09 Feb 01:47:42.287 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">5303:M 09 Feb 01:47:42.289 * Background saving started by pid 9727</span><br><span class="line">5312:S 09 Feb 01:47:42.290 * Full resync from master: 4e882289bf41e7cef05f83f5e1d81fb8ad97e63e:348338</span><br><span class="line">9726:C 09 Feb 01:47:42.345 * DB saved on disk</span><br><span class="line">9726:C 09 Feb 01:47:42.346 * RDB: 6 MB of memory used by copy-on-write</span><br><span class="line">9727:C 09 Feb 01:47:42.366 * DB saved on disk</span><br><span class="line">9727:C 09 Feb 01:47:42.366 * RDB: 8 MB of memory used by copy-on-write</span><br><span class="line">5303:M 09 Feb 01:47:42.368 * Background saving terminated with success</span><br><span class="line">5312:S 09 Feb 01:47:42.368 * MASTER &lt;-&gt; SLAVE sync: receiving 77 bytes from master</span><br><span class="line">5303:M 09 Feb 01:47:42.368 * Synchronization with slave 127.0.0.1:7002 succeeded</span><br><span class="line">5312:S 09 Feb 01:47:42.368 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">5312:S 09 Feb 01:47:42.368 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">5312:S 09 Feb 01:47:42.368 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line">5312:S 09 Feb 01:47:42.387 * Background saving terminated with success</span><br><span class="line">OK</span><br><span class="line">5296:M 09 Feb 01:48:05.885 # Connection with slave client id #2 lost.</span><br><span class="line">5296:M 09 Feb 01:48:05.885 # Connection with slave client id #3 lost.</span><br><span class="line">5296:S 09 Feb 01:48:15.954 * SLAVE OF 127.0.0.1:7001 enabled (user request from &#39;id&#x3D;26 addr&#x3D;127.0.0.1:34652 fd&#x3D;26 name&#x3D;sentinel-b9095b24-cmd age&#x3D;10 idle&#x3D;0 flags&#x3D;x db&#x3D;0 sub&#x3D;0 psub&#x3D;0 multi&#x3D;3 qbuf&#x3D;0 qbuf-free&#x3D;32768 obl&#x3D;36 oll&#x3D;0 omem&#x3D;0 events&#x3D;r cmd&#x3D;exec&#39;)</span><br><span class="line">5296:S 09 Feb 01:48:15.956 # CONFIG REWRITE executed with success.</span><br><span class="line">5296:S 09 Feb 01:48:16.010 * 1 changes in 900 seconds. Saving...</span><br><span class="line">5296:S 09 Feb 01:48:16.011 * Background saving started by pid 9733</span><br><span class="line">9733:C 09 Feb 01:48:16.046 * DB saved on disk</span><br><span class="line">9733:C 09 Feb 01:48:16.047 * RDB: 4 MB of memory used by copy-on-write</span><br><span class="line">5296:S 09 Feb 01:48:16.111 * Background saving terminated with success</span><br><span class="line">5296:S 09 Feb 01:48:16.813 * Connecting to MASTER 127.0.0.1:7001</span><br><span class="line">5296:S 09 Feb 01:48:16.813 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">5296:S 09 Feb 01:48:16.813 * Non blocking connect for SYNC fired the event.</span><br><span class="line">5296:S 09 Feb 01:48:16.813 * Master replied to PING, replication can continue...</span><br><span class="line">5296:S 09 Feb 01:48:16.814 * Partial resynchronization not possible (no cached master)</span><br><span class="line">5303:M 09 Feb 01:48:16.815 * Slave 127.0.0.1:7000 asks for synchronization</span><br><span class="line">5303:M 09 Feb 01:48:16.815 * Full resync requested by slave 127.0.0.1:7000</span><br><span class="line">5303:M 09 Feb 01:48:16.815 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">5303:M 09 Feb 01:48:16.816 * Background saving started by pid 9734</span><br><span class="line">5296:S 09 Feb 01:48:16.818 * Full resync from master: 4e882289bf41e7cef05f83f5e1d81fb8ad97e63e:355186</span><br><span class="line">9734:C 09 Feb 01:48:16.855 * DB saved on disk</span><br><span class="line">9734:C 09 Feb 01:48:16.856 * RDB: 6 MB of memory used by copy-on-write</span><br><span class="line">5303:M 09 Feb 01:48:16.859 * Background saving terminated with success</span><br><span class="line">5296:S 09 Feb 01:48:16.859 * MASTER &lt;-&gt; SLAVE sync: receiving 77 bytes from master</span><br><span class="line">5303:M 09 Feb 01:48:16.859 * Synchronization with slave 127.0.0.1:7000 succeeded</span><br><span class="line">5296:S 09 Feb 01:48:16.859 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">5296:S 09 Feb 01:48:16.859 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">5296:S 09 Feb 01:48:16.860 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="生产环境推荐"><a href="#生产环境推荐" class="headerlink" title="生产环境推荐"></a>生产环境推荐</h2><p>对于一个最小集群，Redis应该是一个Master带上两个Slave，并且开启下列选项：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">min-slaves-to-write 1</span><br><span class="line">min-slaves-max-lag 10</span><br></pre></td></tr></table></figure>
+<p>这样能保证写入Master的同时至少写入一个Slave，如果出现网络分区阻隔并发生failover的时候，可以保证写入的数据最终一致而不是丢失，写入老的Master会直接失败。</p>
+<p>Slave可以适当设置优先级，除了0之外(0表示永远不提升为Master)，越小的优先级，越有可能被提示为Master。如果Slave分布在多个机房，可以考虑将和Master同一个机房的Slave的优先级设置的更低以提升他被选为新的Master的可能性。</p>
+<p>考虑到可用性和选举的需要，Sentinel进程至少为3个，推荐为5个。如果有网络分区，应当适当分布(比如2个在A机房， 2个在B机房，一个在C机房)等。</p>
+<h2 id="增加和移除Sentinel"><a href="#增加和移除Sentinel" class="headerlink" title="增加和移除Sentinel"></a>增加和移除Sentinel</h2><p>增加新的Sentinel实例非常简单，修改好配置文件，启动即可，其他Sentinel会自动发现该实例并加入集群。如果要批量启动一批Sentinel节点，最好以30秒的间隔一个一个启动为好，这样能确保整个 Sentinel集群的大多数能够及时感知到新节点，满足当时可能发生的选举条件。</p>
+<p>移除一个Sentinel实例会相对麻烦一些，因为Sentinel不会忘记已经感知到的Sentinel实例，所以最好按照下列步骤来处理：</p>
+<ul>
+<li>停止将要移除的sentinel进程。</li>
+<li>给其余的sentinel进程发送SENTINEL RESET *命令来重置状态，忘记将要移除的sentinel，每个进程之间间隔30秒。</li>
+<li>确保所有sentinel对于当前存货的sentinel数量达成一致，可以通过SENTINEL MASTER <mastername>命令来观察，或者查看配置文件。</li>
+</ul>
+<h2 id="客户端实现"><a href="#客户端实现" class="headerlink" title="客户端实现"></a>客户端实现</h2><p>客户端从过去直接连接Redis ，变成：</p>
+<ul>
+<li>先连接一个Sentinel实例</li>
+<li>使用 SENTINEL get-master-addr-by-name master-name 获取Redis地址信息。</li>
+<li>连接返回的Redis地址信息，通过ROLE命令查询是否是Master。如果是，连接进入正常的服务环节。否则应该断开重新查询。</li>
+<li>(可选)客户端可以通过SENTINEL sentinels <master-name>来更新自己的Sentinel实例列表。</li>
+</ul>
+<h2 id="其它"><a href="#其它" class="headerlink" title="其它"></a>其它</h2><p>由于Redis是异步复制，所以Sentinel其实无法达到强一致性，它承诺的是最终一致性：最后一次failover的Redis Master赢者通吃，其他Slave的数据将被丢弃，重新从新的Master复制数据</p>
+<p><a target="_blank" rel="noopener" href="http://www.yunweipai.com/archives/20444.html">参考Sentinel</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/redis-sentinel/" rel="tag"># redis sentinel</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-02-08/redis%E9%9B%86%E7%BE%A4-%E4%B8%BB%E4%BB%8E%E9%85%8D%E7%BD%AE/" rel="prev" title="redis集群-主从配置">
+      <i class="fa fa-chevron-left"></i> redis集群-主从配置
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-02-10/linux%E5%85%A5%E9%97%A8-%E7%94%A8%E6%88%B7%E7%AE%A1%E7%90%86/" rel="next" title="linux入门-用户管理">
+      linux入门-用户管理 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis-Sentinel%E4%B8%BB%E8%A6%81%E4%BD%9C%E7%94%A8"><span class="nav-number">2.</span> <span class="nav-text">Redis Sentinel主要作用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9E%84%E5%BB%BARedis-Sentinel%E9%9B%86%E7%BE%A4"><span class="nav-number">3.</span> <span class="nav-text">构建Redis Sentinel集群</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#redis%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%85%8D%E7%BD%AE-redis-conf%E6%96%87%E4%BB%B6"><span class="nav-number">3.1.</span> <span class="nav-text">redis服务器配置 redis.conf文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AESentinel-conf-%E4%B8%89%E4%B8%AA%E6%96%87%E4%BB%B6%E5%8F%AA%E6%9C%89port%E5%92%8C%E6%97%A5%E5%BF%97%E7%9B%AE%E5%BD%95%E4%B8%8D%E4%B8%80%E6%A0%B7"><span class="nav-number">3.2.</span> <span class="nav-text">配置Sentinel.conf (三个文件只有port和日志目录不一样)</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E8%A7%A3%E9%87%8A"><span class="nav-number">3.3.</span> <span class="nav-text">配置文件解释</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8sentinel%E9%9B%86%E7%BE%A4"><span class="nav-number">3.4.</span> <span class="nav-text">启动sentinel集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%9A%E8%BF%87redis%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%B7%A5%E5%85%B7%E6%9F%A5%E7%9C%8B%E5%BD%93%E5%89%8DSentinel%E7%9A%84%E4%BF%A1%E6%81%AF"><span class="nav-number">3.5.</span> <span class="nav-text">通过redis客户端工具查看当前Sentinel的信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Sentinel%E5%90%AF%E5%8A%A8%E5%90%8E%E4%BC%9A%E8%BE%93%E5%87%BA%E7%B1%BB%E4%BC%BC%E7%9A%84%E6%97%A5%E5%BF%97"><span class="nav-number">3.6.</span> <span class="nav-text">Sentinel启动后会输出类似的日志</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#sentinel-conf%E6%96%87%E4%BB%B6%E7%94%9F%E6%88%90%E4%BF%A1%E6%81%AF"><span class="nav-number">3.7.</span> <span class="nav-text">sentinel.conf文件生成信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8BSentinel%E7%9B%91%E6%8E%A7%E7%9A%84%E4%B8%BB%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="nav-number">3.8.</span> <span class="nav-text">查看Sentinel监控的主从服务器</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Sentinel%E9%AA%8C%E8%AF%81"><span class="nav-number">4.</span> <span class="nav-text">Sentinel验证</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E4%BA%A7%E7%8E%AF%E5%A2%83%E6%8E%A8%E8%8D%90"><span class="nav-number">4.1.</span> <span class="nav-text">生产环境推荐</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A2%9E%E5%8A%A0%E5%92%8C%E7%A7%BB%E9%99%A4Sentinel"><span class="nav-number">4.2.</span> <span class="nav-text">增加和移除Sentinel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%A2%E6%88%B7%E7%AB%AF%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.3.</span> <span class="nav-text">客户端实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B6%E5%AE%83"><span class="nav-number">4.4.</span> <span class="nav-text">其它</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://muse.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
