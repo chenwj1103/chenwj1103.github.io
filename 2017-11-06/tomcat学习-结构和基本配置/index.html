@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Tomcat的安装目录结构  12345678bin: 启动和关闭Tomcat脚本文件。conf: Tomcat服务器的各种配置文件，包括：server.xml、web.xml、catalina.policy等。lib: Tomcat服务器和所有web应用可以访问的jar包。logs: Tomcat的日志文件。webapps: Tomcat自带的两个web应用：admin和manager，用来管">
+<meta property="og:type" content="article">
+<meta property="og:title" content="tomcat学习-结构和基本配置">
+<meta property="og:url" content="http://www.chenwj.cn/2017-11-06/tomcat%E5%AD%A6%E4%B9%A0-%E7%BB%93%E6%9E%84%E5%92%8C%E5%9F%BA%E6%9C%AC%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="Tomcat的安装目录结构  12345678bin: 启动和关闭Tomcat脚本文件。conf: Tomcat服务器的各种配置文件，包括：server.xml、web.xml、catalina.policy等。lib: Tomcat服务器和所有web应用可以访问的jar包。logs: Tomcat的日志文件。webapps: Tomcat自带的两个web应用：admin和manager，用来管">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://www.chenwj.cn/images/tomcat/tomcat3.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/tomcat/tomcat1.jpg">
+<meta property="og:image" content="http://www.chenwj.cn/images/tomcat/tomcat2.jpg">
+<meta property="article:published_time" content="2017-11-06T15:34:04.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.835Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="tomcat">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://www.chenwj.cn/images/tomcat/tomcat3.png">
+
+<link rel="canonical" href="http://www.chenwj.cn/2017-11-06/tomcat%E5%AD%A6%E4%B9%A0-%E7%BB%93%E6%9E%84%E5%92%8C%E5%9F%BA%E6%9C%AC%E9%85%8D%E7%BD%AE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>tomcat学习-结构和基本配置 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="茄子的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">68</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">26</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">75</span></a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2017-11-06/tomcat%E5%AD%A6%E4%B9%A0-%E7%BB%93%E6%9E%84%E5%92%8C%E5%9F%BA%E6%9C%AC%E9%85%8D%E7%BD%AE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/favicon.ico">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          tomcat学习-结构和基本配置
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2017-11-06 23:34:04" itemprop="dateCreated datePublished" datetime="2017-11-06T23:34:04+08:00">2017-11-06</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/web%E5%AE%B9%E5%99%A8/" itemprop="url" rel="index"><span itemprop="name">web容器</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>10k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <ul>
+<li>Tomcat的安装目录结构</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">bin: 启动和关闭Tomcat脚本文件。</span><br><span class="line">conf: Tomcat服务器的各种配置文件，包括：server.xml、web.xml、catalina.policy等。</span><br><span class="line">lib: Tomcat服务器和所有web应用可以访问的jar包。</span><br><span class="line">logs: Tomcat的日志文件。</span><br><span class="line">webapps: Tomcat自带的两个web应用：admin和manager，用来管理Tomcat的Web服务。</span><br><span class="line">work: JSP经过Tomcat编译后生成的Servlet。</span><br><span class="line">temp: Tomcat运行时的临时文件。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Tomcat常用配置文件</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">server.xml：Tomcat中最重要的配置文件，定义了tomcat的体系结构，包括连接器端口、连接数、集群、虚拟目录、访问日志等的设置。</span><br><span class="line">context.xml：全局context的配置文件，包括JNDI等信息的配置。</span><br><span class="line">tocmat-users.xml：Tocmat管理员身份的配置文件，关键是设置管理员账号的密码。</span><br><span class="line">logging.properties：Tocmat日志配置文件，可以修改默认的Tocmat日志路径和名称。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Tomcat JVM参数调整</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">根据系统物理内存大小合理设置下列五个参数catalina.sh&#x2F;catalina.bat</span><br><span class="line"></span><br><span class="line">-server </span><br><span class="line">-Xms512m </span><br><span class="line">-Xmx512m</span><br><span class="line">-XX:PermSize&#x3D;128m</span><br><span class="line">-XX:MaxPermSize&#x3D;128m</span><br><span class="line"></span><br><span class="line">   一般情况下，设置-Xms&#x3D;-Xmx、-XX:PermSize&#x3D;-XX:MaxPermSize，正式服务器必须设置以上参数，以尽可能压榨服务器性能。</span><br><span class="line">相关参数取值需要根据实际情况考虑，不要超过(物理内存-其他程序内存)的80%即可。</span><br><span class="line"></span><br><span class="line">没有特殊理由，尽量不要对上述五个参数外的其他JVM参数进行设置;</span><br><span class="line">无法保证各种操作系统平台的可移植性;</span><br><span class="line">过度干涉JVM内存管理会导致无法预料的后果;</span><br><span class="line">如果在Windows平台上将解压版的Tomcat安装为服务，可以通过修改批处理文件$CATALINA_HOME&#x2F;bin&#x2F;service.bat对JVM参数进行调整。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Tomcat日志配置</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><span class="line">Tomcat日志信息包括访问日志和运行日志。</span><br><span class="line"></span><br><span class="line">访问日志用于对用户访问系统的行为进行跟踪记录，主要记录用户访问的时间、对应的IP</span><br><span class="line">地址、访问的资料等信息。记录访问日志主要是基于对系统安全的考虑，对系统中一些重</span><br><span class="line">要、敏感信息的资料访问历史进行记录，便于对资源的访问历史进行追踪，对于敏感信息</span><br><span class="line">未经授权访问等进行事后追查有一定帮助。但记录访问日志会对服务器性能产生一定的影</span><br><span class="line">响，在生产系统中需要慎用。</span><br><span class="line"></span><br><span class="line">运行日志主要记录程序运行的一些信息，其中的异常错误信息可以为我们定位错误。</span><br><span class="line">从6.0版本开始，Tomcat的日志接口采用是对Apache Commons Logging日志接口进行独</span><br><span class="line">立封装，缺省配置下，该日志接口采用硬编码使用java.util.logging日志框架。</span><br><span class="line"></span><br><span class="line">由于Tomcat发布版本中独立封装的Apache Commons Logging接口并没有对接口完全实</span><br><span class="line">现，如果要选择不同的日志框架就需要将该日志接口替换为完全实现的版本。</span><br><span class="line"></span><br><span class="line">缺省配置下，Tomcat是不记录访问日志的，可以通过如下配置允许Tomcat记录访问日志：</span><br><span class="line"></span><br><span class="line">修改$CATALINA_HOME&#x2F;server.xml，在Host标签下，找到如下配置信息，去掉两端的注释</span><br><span class="line">就会启用访问日志记录功能：</span><br><span class="line"></span><br><span class="line">&lt;Valve className&#x3D;&quot;org.apache.catalina.valves.AccessLogValve&quot; directory&#x3D;&quot;logs&quot;</span><br><span class="line"></span><br><span class="line">prefix&#x3D;&quot;localhost_access_log.&quot; suffix&#x3D;&quot;.txt&quot; pattern&#x3D;&quot;common&quot; resolveHosts&#x3D;&quot;false&quot;&#x2F;&gt;</span><br><span class="line"></span><br><span class="line">通过对pattern项的修改，可以改变日志输出的内容。该项值可以为： common 与 combined，对应的日志输出内容如下所示：</span><br><span class="line"></span><br><span class="line">common: %h %l %u %t %r %s %b</span><br><span class="line"></span><br><span class="line">combined: %h %l %u %t %r %s %b %&#123;Referer&#125;i %&#123;User-Agent&#125;i</span><br><span class="line"></span><br><span class="line">pattern 也可以根据需要自由组合, 例如 pattern&#x3D;&quot;%h %l&quot;，对 于各 fields 字段的含义请参照Tomcat官方文档。</span><br><span class="line"></span><br><span class="line">在不同的环境下，需要设置不同的日志级别，在生产环境中，为了提高效率和稳定性，一般</span><br><span class="line">会将日志级别设置为相对较高的级别，而开发环境中为了跟踪程序流程，可以将日志级别</span><br><span class="line">调整为较低的级别。不同日志框架有不同的日志级别，常用的日志框架对应级别如下：</span><br><span class="line"></span><br><span class="line">Java.util.logging对应的日志级别由高到低分别为：</span><br><span class="line"></span><br><span class="line">severe &gt; warning &gt; info &gt; config &gt; fine &gt; finer &gt; finest</span><br><span class="line"></span><br><span class="line">org.apache.log4j对应的日志级别由高到低分别为：</span><br><span class="line"></span><br><span class="line">fatal &gt; error &gt; warn &gt; info &gt; debug &gt; trace</span><br><span class="line"></span><br><span class="line">在缺省配置下，Tomcat采用Java.util.logging日志框架，对应的配置文件</span><br><span class="line">为$CATALINA_HOME&#x2F; logging.properties，常用的日志级别设定方法如下：</span><br><span class="line"></span><br><span class="line">设置catalina日志的级别为：FINE</span><br><span class="line"></span><br><span class="line">1catalina.org.apache.juli.FileHandler.level &#x3D; FINE</span><br><span class="line"></span><br><span class="line">禁用catalina日志的输出：</span><br><span class="line"></span><br><span class="line">1catalina.org.apache.juli.FileHandler.level &#x3D; OFF</span><br><span class="line"></span><br><span class="line">设置catalina所有的日志消息均输出：</span><br><span class="line"></span><br><span class="line">1catalina.org.apache.juli.FileHandler.level &#x3D; ALL</span><br><span class="line"></span><br><span class="line">Log4j是目前应用最广的日志框架，可以使用Log4j替换Tomcat缺省采用的</span><br><span class="line">java.util.logging</span><br><span class="line">日志框架，步骤如下：</span><br><span class="line"></span><br><span class="line">创建log4j配置文件log4j.properties ，保存在$CATALINA_HOME&#x2F;lib 下。</span><br><span class="line"></span><br><span class="line">从Apache官网Log4J项目下载Log4J（1.2版本以后）。</span><br><span class="line"></span><br><span class="line">从Apache官网Tomcat项目下载tomcat-juli.jar和tomcat-juli-adapters.jar。</span><br><span class="line"></span><br><span class="line">复制log4j.jar、tomcat-juli-adapters.jar到$CATALINA_HOME&#x2F;lib下。</span><br><span class="line"></span><br><span class="line">用tomcat-juli.jar覆盖$CATALINA_HOME&#x2F;bin下的同名文件。</span><br><span class="line"></span><br><span class="line">删除Tomcat的缺省日志配置文件$CATALINA_HOME&#x2F;conf&#x2F; logging.properties，以避免生成一些冗余的空日志文件。</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<ul>
+<li>Tomcat URL编码格式设置</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">缺省情况下，如果URL当中包含有非英文字符，需要通过在程序对URL进行转码处理，否</span><br><span class="line">则URL中的非英文字符无法保证正确解析。在无特殊要求的情况下，需要将URL编码设置为</span><br><span class="line">和项目统一的编码格式，目前公司大部分项目都统一采用UTF-8字符编码方式，示例如下：</span><br><span class="line"></span><br><span class="line">&lt;Connector port&#x3D;&quot;8087&quot; protocol&#x3D;&quot;HTTP&#x2F;1.1&quot; connectionTimeout&#x3D;&quot;20000&quot;</span><br><span class="line">redirectPort&#x3D;&quot;8443&quot; URIEncoding&#x3D;&quot;utf-8&quot; &#x2F;&gt;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Tomcat 常见问题总结</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">JVM内存溢出(OOM)，分为堆内存溢出和PermGen区内存溢出：</span><br><span class="line"></span><br><span class="line">java.lang.OutOfMemoryError: PermGen space</span><br><span class="line"></span><br><span class="line">PermGen space(Permanent Generation space)，是指内存的永久保存区域，主要用于存</span><br><span class="line">放Class和Meta信息的，Class在被Loader时就会被放到PermGen space中, 它和存放类实</span><br><span class="line">例(Instance)的Heap区域不同，GC(Garbage Collection)不会在主程序运行期对其进行清</span><br><span class="line">理，所以如果应用中有很多CLASS的话，就很可能出现PermGen space错误。如果加载的Class超过MaxPermSize，就会抛出该异常，可以通过调整MaxPermSize进行解决。</span><br><span class="line"></span><br><span class="line">java.lang.OutOfMemoryError: Java heap space</span><br><span class="line"></span><br><span class="line">JVM堆是指java程序运行过程中JVM可以调配使用的内存空间。JVM在启动的时候会自动</span><br><span class="line">设置Heap size的值，其初始空间(-Xms)是物理内存的1&#x2F;64，最大空间(-Xmx)是物理内存</span><br><span class="line">的1&#x2F;4。可以利用JVM提供的-Xmn -Xms -Xmx等选项可进行设置。Heap size 的大小是</span><br><span class="line">Young Generation 和Tenured Generaion 之和。在JVM中如果98％的时间是用于GC且</span><br><span class="line">可用的Heap size 不足2％的时候将抛出此异常信息。</span><br><span class="line"></span><br><span class="line">大量用户访问时浏览器没有响应</span><br><span class="line">并发线程数设置太小，调整$CATALINA&#x2F;conf&#x2F;server.xml中连接器对应的请求处理线程数。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>tomcat的并发介绍</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">对web应用开发者来说，我们很关心应用可同时处理的请求数，以及响应时间。</span><br><span class="line"></span><br><span class="line">对tomcat来说，每一个进来的请求(request)都需要一个线程，直到该请求结束。如果同时</span><br><span class="line">进来的请求多于当前可用的请求处理线程数，额外的线程就会被创建，直到到达配置的最大</span><br><span class="line">线程数(maxThreads属性值)。如果仍就同时接收到更多请求，这些来不及处理的请求就会</span><br><span class="line">在Connector创建的ServerSocket中堆积起来，直到到达最大的配置值(acceptCount属性</span><br><span class="line">值)。至此，任何再来的请求将会收到connection refused错误，直到有可用的资源来处理</span><br><span class="line">它们。</span><br><span class="line"></span><br><span class="line">这里我们关心的是tomcat能同时处理的请求数和请求响应时间，显然Connector元素</span><br><span class="line">的maxThreads和acceptCount属性对其有直接的影响。无论acceptCount值为多</span><br><span class="line">少，maxThreads直接决定了实际可同时处理的请求数。而不管maxThreads如何acceptCount</span><br><span class="line">则决定了有多少请求可等待处理。然而，不管是可立即处理请求还是需要放入等待区，都</span><br><span class="line">需要tomcat先接受该请求(即接受client的连接请求，建立socketchannel)，那么tomcat</span><br><span class="line">同时可建立的连接数(maxConnections属性值)也会影响可同时处理的请求数。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<ul>
+<li>tomcat并发配置１</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">tomcat的http connector有三种：bio、nio、apr。从上面的属性描述中可以看出对于不同</span><br><span class="line">的connector实现，相同的属性可能会有不同的默认值和不同的处理策略，所以在调整配</span><br><span class="line">置前，要先弄清楚各种实现之间的不同，以及当前部署容器使用的是哪种connector。</span><br><span class="line">查阅Tomcat7 http connector 配置文档Connector Comparison部分便可获知各种connector实现间的差异。</span><br><span class="line">怎样才能知道容器使用的是何种connector实现？启动tomcat后，访问Server Status Page，看到如下信息即可知道使用的是何种connector：</span><br><span class="line"></span><br><span class="line">我的OS是windows，所以tomcat默认使用的是aprconnector。在linux上，默认使用的是bio connector。与nio相比，bio性能较低。将&lt;TOMCAT_HOME&gt;&#x2F;conf&#x2F;server.xml中的如下配置片段：</span><br><span class="line"></span><br><span class="line">&lt;Connectorport&#x3D;&quot;8080&quot;protocol&#x3D;&quot;HTTP&#x2F;1.1&quot;</span><br><span class="line">               connectionTimeout&#x3D;&quot;20000&quot;</span><br><span class="line">               redirectPort&#x3D;&quot;8443&quot; &#x2F;&gt;</span><br><span class="line">修改为：</span><br><span class="line"></span><br><span class="line">&lt;Connectorport&#x3D;&quot;8080&quot;protocol&#x3D;&quot;org.apache.coyote.http11.Http11NioProtocol&quot;</span><br><span class="line">               connectionTimeout&#x3D;&quot;20000&quot;</span><br><span class="line">               redirectPort&#x3D;&quot;8443&quot; &#x2F;&gt;</span><br><span class="line">就可将http connector切换至nio了。</span><br><span class="line"></span><br><span class="line">　tomcat的最大线程数设置：</span><br><span class="line"></span><br><span class="line">Tomcat的server.xml中连接器设置如下</span><br><span class="line"></span><br><span class="line">   &lt;Connectorport&#x3D;&quot;8080&quot;  maxThreads&#x3D;&quot;150&quot;minSpareThreads&#x3D;&quot;25&quot; maxSpareThreads&#x3D;&quot;75&quot;  enableLookups&#x3D;&quot;false&quot;redirectPort&#x3D;&quot;8443&quot; acceptCount&#x3D;&quot;100&quot;  debug&#x3D;&quot;0&quot;connectionTimeout&#x3D;&quot;20000&quot;  disableUploadTimeout&#x3D;&quot;true&quot;&#x2F;&gt; </span><br><span class="line"> tomcat在配置时设置最大线程数，当前线程数超过这个数值时会出错</span><br><span class="line"></span><br><span class="line">minProcessors：最小空闲连接线程数，用于提高系统处理性能，默认值为10</span><br><span class="line">maxProcessors：最大连接线程数，即：并发处理的最大请求数，默认值为75</span><br><span class="line">acceptCount：允许的最大连接数，应大于等于maxProcessors，默认值为100</span><br><span class="line">enableLookups：是否反查域名，取值为：true或false。为了提高处理能力，</span><br><span class="line">应设置为false  </span><br><span class="line">connectionTimeout：网络连接超时，单位：毫秒。设置为0表示永不超时，这样设置有隐患的。通常可设置为30000毫秒。</span><br><span class="line">其中和最大连接数相关的参数为maxProcessors和acceptCount。如果要加大并发连接数，应同时加大这两个参数。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>如何加大tomcat可以使用的内存</li>
+</ul>
+<p>tomcat默认可以使用的内存为128MB，在较大型的应用项目中，这点内存是不够的，需要调大。<br>Unix下，在文件{tomcat_home}/bin/catalina.sh的前面，增加如下设置：<br>JAVA_OPTS=’-Xms【初始化内存大小】 -Xmx【可以使用的最大内存】’<br>需要把这个两个参数值调大。例如：<br>JAVA_OPTS=’-Xms256m -Xmx512m’<br>表示初始化内存为256MB，可以使用的最大内存为512MB</p>
+<ul>
+<li>Tomcat中的并发配置２</li>
+</ul>
+<p><a target="_blank" rel="noopener" href="http://tomcat.apache.org/tomcat-7.0-doc/config/http.html">官网关于线程数的配置</a></p>
+<p><a target="_blank" rel="noopener" href="http://www.365mini.com/page/tomcat-connector-mode.htm">修改Tomcat Connector运行模式</a></p>
+<p>tomcat的线程配置有两种：可以在connector中配置，也可以配置executor。</p>
+<p>连接器中的线程配置是私有的，连接器自己的配置只能自己使用；而线程池可以被共享，<br>多个连接器通过executor属性关联到连接池的name完成配置（见下图）；<br>一旦连接器中配置了一个存在的executor，那么线程池的配置将会覆盖连接器的线程配置。<br><img src="/images/tomcat/tomcat3.png" alt="连接器和线程池"></p>
+<p>线程池覆盖连接器中的线程配置，主要是覆盖maxThreads和minSpareThreads两个参数，这两个参数在线程池标签和连接器标签中都存在。<br>    a. 对于线程池而言：最主要的配置项是maxThreads和minSpareThreads（参看3.1表格，官网全部配置项参看4.1链接），前者代表线程池中可以创建的最大线程数，后者代表当线程池空闲的时候保留的线程数量，当线程池覆盖连接器的线程配置的时候，最主要的是覆盖这两个参数，连接器如何关联线程池，参看上文截图。<br>    b. 对于连接器而言：线程相关的主要参数有四个——maxThreads、minSpareThreads、maxConnections、acceptCount，如果连接器关联了线程池，那么maxThreads和minSpareThreads会被覆盖（重要的事情反复说），acceptCount和maxConnections继续生效；<br>    maxThreads：一个请求分配一个线程处理，其实就是serversocket.accept之后，新建了一个线程去处理这个接受的socket，然后这个连接器可以建立的最大线程数量即为maxThreads配置的值，如果是多个连接器关联了同一个线程池，那么多个连接器允许建立的线程数量之和即为maxThreads的值；<br>    minSpareThreads：如果请求少或者没有请求，那么tomcat就会主动关闭一些不用的线程，但是至少会保留minSpareThreads配置的线程数；<br>    maxConnections：表示可以同时被当前连接器处理的请求数量，这个配置项需要和maxThreads进行对比，一个请求一旦被接受处理就会分配给一个线程，这时候能够同时处理多少个请求取决于maxConnections和maxThreads两个配置项中的较小者，如果连接器是BIO则maxConnections默认等于maxThreads（连接器的maxThreads，如果关联了线程池，则为线程池中的maxThreads），NIO2默认是10000，APR默认是8192（BIO/NIO/NIO2/APR主要是根据connector的protocol属性，这个属性可以配置小表中的类）；<br>    举个例子，连接器中maxThreads=200，maxConnections=100，这时候因为线程池最多只允许创建100个线程，因此能被同时处理的请求数量是100，取决于两者中的较小者；但是如果连接器关联了线程池maxThreads=200，连接器A的maxConnections=120，连接器B的maxConnections=100，这时候对于连接器A而言，处理请求的最大的线程数是120，不会超过120，但是能不能达到120还需要看线程池中的可用的线程数，如果这时候连接器B已经拿了100个线程，那么此时A只能拿到100个线程；</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Java Blocking Connector BIO    Java Nio Connector NIO     Java Nio2 Connector NIO2    APRnative Connector</span><br><span class="line">APR</span><br><span class="line">Classname    Http11Protocol    Http11NioProtocol    Http11Nio2Protocol    Http11AprProtocol</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<pre><code>acceptCount：相当于建立ServerSocket的时候构造函数中传入的backlog参数，表</code></pre>
+<p>示serversocket中完成三次握手后（成功建立TCP连接）允许等待被accept的socket数量，<br>已经建立好了TCP连接，但是socket还没有被accept取出来处理；</p>
+<ul>
+<li><p>Tomcat结构<br>Tomcat是一个基于组件的服务器，它的构成组件都是可配置的，其中最外层的组件是Catalina Servlet容器，其他的组件按照一定的格式要求配置在这个顶层容器中。Tomcat的各个组件是在<TOMCAT_HOME>\conf\server.xml文件中配置的，Tomcat服务器默认情况下对各种组件都有默认的实现，下面通过分析server.xml文件来理解Tomcat的各个组件是如何组织的。server.xml文件的基本组成结构如下。</p>
+<p><img src="/images/tomcat/tomcat1.jpg"></p>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">XML配置文件结构</span><br><span class="line">&lt;Server&gt;                     顶层类元素：一个配置文件中只能有一个&lt;Server&gt;元素，可包含多个Service。</span><br><span class="line">    &lt;Service&gt;                顶层类元素：本身不是容器，可包含一个Engine，多个Connector。</span><br><span class="line">        &lt;Connector&#x2F;&gt;         连接器类元素：代表通信接口。</span><br><span class="line">           &lt;Engine&gt;   容器类元素：为特定的Service组件处理所有客户请求，可包含多个Host。</span><br><span class="line">              &lt;Host&gt;    容器类元素：为特定的虚拟主机处理所有客户请求，可包含多个Context。</span><br><span class="line">                 &lt;Context&gt;   容器类元素：为特定的Web应用处理所有客户请求。</span><br><span class="line">                 &lt;&#x2F;Context&gt;</span><br><span class="line">               &lt;&#x2F;Host&gt;</span><br><span class="line">              &lt;&#x2F;Engine&gt;</span><br><span class="line">     &lt;&#x2F;Service&gt;</span><br><span class="line">&lt;&#x2F;Server&gt;</span><br><span class="line"></span><br><span class="line">1)Service</span><br><span class="line">Service组件是一些Connector组件的集合，它本身不是一个容器，所以在这里不能定义日志</span><br><span class="line">等组件。一个Service组件中只能有一个Engine组件，可以包含多个Connector组件。</span><br><span class="line"></span><br><span class="line">2)Connector组件</span><br><span class="line">Connector组件表示一个接口，通过这个接口接收客户的请求，然户发送给其他的容器组件，最后再把服务器的响应结果传递给客户。</span><br><span class="line"></span><br><span class="line">3) Engine, Host和context</span><br><span class="line">上面介绍的3个组件本身并不能处理客户请求，也不能生成响应。在Tomcat中只有3个组件是</span><br><span class="line">可以处理客户请求并生成响应的，这3个组件分别是 Engine、Host和Context组件。这3个组</span><br><span class="line">件分别代表了不同的服务范围，通过嵌套关系可以知道3个组件的范围有如下的关系：Engine&gt;Host&gt;Context。</span><br><span class="line">a.Engine组件下可以包含多个Host组件，它为特定的Service组件处理所有客户请求。</span><br><span class="line">b.一个Host组件代表一个虚拟主机，一个虚拟主机中可以包含多个Web应用（Context组件）。</span><br><span class="line">c.Context组件代表一个Web应用。</span><br><span class="line">Tomcat的各个组件关系，可以用下图描述。</span><br></pre></td></tr></table></figure>
+<p> <img src="/images/tomcat/tomcat2.jpg"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">2. Tomcat处理一个HTTP请求的过程</span><br><span class="line">假设来自客户的请求为： http:&#x2F;&#x2F;localhost:8080&#x2F;wsota&#x2F;wsota_index.jsp </span><br><span class="line">1) 请求被发送到本机端口8080，被在那里侦听的Coyote HTTP&#x2F;1.1 Connector获得 </span><br><span class="line">2) Connector把该请求交给它所在的Service的Engine来处理，并等待来自Engine的回应 </span><br><span class="line">3) Engine获得请求localhost&#x2F;wsota&#x2F;wsota_index.jsp，匹配它所拥有的所有虚拟主机Host </span><br><span class="line">4) Engine匹配到名为localhost的Host（即使匹配不到也把请求交给该Host处理，因为该Host被定义为该Engine的默认主机） </span><br><span class="line">5) localhost Host获得请求&#x2F;wsota&#x2F;wsota_index.jsp，匹配它所拥有的所有Context </span><br><span class="line">6) Host匹配到路径为&#x2F;wsota的Context（如果匹配不到就把该请求交给路径名为&quot;&quot;的Context去处理） </span><br><span class="line">7) path&#x3D;&quot;&#x2F;wsota&quot;的Context获得请求&#x2F;wsota_index.jsp，在它的mapping table中寻找对应的servlet </span><br><span class="line">8) Context匹配到URL PATTERN为*.jsp的servlet，对应于JspServlet类 </span><br><span class="line">9) 构造HttpServletRequest对象和HttpServletResponse对象，作为参数调用JspServlet的doGet或doPost方法 </span><br><span class="line">10)Context把执行完了之后的HttpServletResponse对象返回给Host </span><br><span class="line">11)Host把HttpServletResponse对象返回给Engine </span><br><span class="line">12)Engine把HttpServletResponse对象返回给Connector </span><br><span class="line">13)Connector把HttpServletResponse对象返回给客户browser</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><a target="_blank" rel="noopener" href="http://www.cnblogs.com/xzpp/archive/2012/06/15/2550473.html">tomcat的结构</a></p>
+<p><a target="_blank" rel="noopener" href="http://tomcat.apache.org/tomcat-8.0-doc/config/http.html">官网connector配置</a></p>
+<p><a target="_blank" rel="noopener" href="http://tomcat.apache.org/tomcat-8.0-doc/config/executor.html">官网executor配置</a></p>
+<p><a target="_blank" rel="noopener" href="http://www.cnblogs.com/doit8791/archive/2012/10/27/2742768.html">参考资料１</a></p>
+<p><a target="_blank" rel="noopener" href="http://www.cnblogs.com/softidea/p/5750791.html">参考资料２</a></p>
+<p><a target="_blank" rel="noopener" href="http://www.cnblogs.com/softidea/p/5750791.html">参考资料３</a></p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/w1992wishes/article/details/79242797">tomcat源码解析</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/tomcat/" rel="tag"># tomcat</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2017-11-03/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%B8%80%20%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5%E5%92%8C%E6%93%8D%E4%BD%9C/" rel="prev" title="《SQL基础》SQL学习指南学习笔记一　数据库的基本概念和操作">
+      <i class="fa fa-chevron-left"></i> 《SQL基础》SQL学习指南学习笔记一　数据库的基本概念和操作
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2017-11-10/SQL%E5%AD%A6%E4%B9%A0%E6%8C%87%E5%8D%97%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E4%BA%8C%20%E6%9F%A5%E8%AF%A2%E5%85%A5%E9%97%A8%20%E8%BF%87%E6%BB%A4%20%E5%A4%9A%E8%A1%A8%E6%9F%A5%E8%AF%A2/" rel="next" title="《SQL基础》SQL学习指南学习笔记二 查询入门 过滤 多表查询">
+      《SQL基础》SQL学习指南学习笔记二 查询入门 过滤 多表查询 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="陈伟杰"
+      src="/images/favicon.ico">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/chenwj1103" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;chenwj1103" rel="noopener" target="_blank"><i class="github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

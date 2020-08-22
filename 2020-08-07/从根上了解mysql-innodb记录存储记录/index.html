@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="innodb的数据结构InnoDB采取的方式是：将数据划分为若干个页，以页作为磁盘和内存之间交互的基本单位，InnoDB中页的大小一般为 16 KB 设计了4种不同类型的行格式，分别是Compact、Redundant、Dynamic和Compressed行格式 &lt; !– more –&gt; Compact 格式 我们知道表中的某些列可能存储NULL值，如果把这些NULL值都放到记录的真实">
+<meta property="og:type" content="article">
+<meta property="og:title" content="从根上了解mysql-innodb记录存储记录">
+<meta property="og:url" content="http://www.chenwj.cn/2020-08-07/%E4%BB%8E%E6%A0%B9%E4%B8%8A%E4%BA%86%E8%A7%A3mysql-innodb%E8%AE%B0%E5%BD%95%E5%AD%98%E5%82%A8%E8%AE%B0%E5%BD%95/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="innodb的数据结构InnoDB采取的方式是：将数据划分为若干个页，以页作为磁盘和内存之间交互的基本单位，InnoDB中页的大小一般为 16 KB 设计了4种不同类型的行格式，分别是Compact、Redundant、Dynamic和Compressed行格式 &lt; !– more –&gt; Compact 格式 我们知道表中的某些列可能存储NULL值，如果把这些NULL值都放到记录的真实">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://www.chenwj.cn/images/mysql2/compact%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/mysql2/%E8%AE%B0%E5%BD%95%E5%A4%B4%E4%BF%A1%E6%81%AF.png">
+<meta property="article:published_time" content="2020-08-07T03:50:12.000Z">
+<meta property="article:modified_time" content="2020-08-21T22:06:21.792Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="mysql">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://www.chenwj.cn/images/mysql2/compact%E7%BB%93%E6%9E%84.png">
+
+<link rel="canonical" href="http://www.chenwj.cn/2020-08-07/%E4%BB%8E%E6%A0%B9%E4%B8%8A%E4%BA%86%E8%A7%A3mysql-innodb%E8%AE%B0%E5%BD%95%E5%AD%98%E5%82%A8%E8%AE%B0%E5%BD%95/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>从根上了解mysql-innodb记录存储记录 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="茄子的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">68</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">26</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">75</span></a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2020-08-07/%E4%BB%8E%E6%A0%B9%E4%B8%8A%E4%BA%86%E8%A7%A3mysql-innodb%E8%AE%B0%E5%BD%95%E5%AD%98%E5%82%A8%E8%AE%B0%E5%BD%95/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/favicon.ico">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          从根上了解mysql-innodb记录存储记录
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2020-08-07 11:50:12" itemprop="dateCreated datePublished" datetime="2020-08-07T11:50:12+08:00">2020-08-07</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-22 06:06:21" itemprop="dateModified" datetime="2020-08-22T06:06:21+08:00">2020-08-22</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/mysql/" itemprop="url" rel="index"><span itemprop="name">mysql</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>4.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>4 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="innodb的数据结构"><a href="#innodb的数据结构" class="headerlink" title="innodb的数据结构"></a>innodb的数据结构</h2><p>InnoDB采取的方式是：将数据划分为若干个页，以页作为磁盘和内存之间交互的基本单位，InnoDB中页的大小一般为 16 KB</p>
+<p>设计了4种不同类型的行格式，分别是Compact、Redundant、Dynamic和Compressed行格式</p>
+<p>&lt; !– more –&gt;</p>
+<h3 id="Compact-格式"><a href="#Compact-格式" class="headerlink" title="Compact 格式"></a>Compact 格式</h3><p><img src="/images/mysql2/compact%E7%BB%93%E6%9E%84.png" alt="compact结构"></p>
+<p>我们知道表中的某些列可能存储NULL值，如果把这些NULL值都放到记录的真实数据中存储会很占地方，所以Compact行格式把这些值为NULL的列统一管理起来，存储到NULL值列表中</p>
+<p><img src="/images/mysql2/%E8%AE%B0%E5%BD%95%E5%A4%B4%E4%BF%A1%E6%81%AF.png" alt="记录头信息"></p>
+<p>主要包括删除标记位、当前记录拥有的记录数、记录类型（普通记录、非叶子节点记录、最小记录、最大记录）、next_record(表示从当前记录的真实数据到下一条记录的真实数据的地址偏移量)</p>
+<p>InnoDB表对主键的生成策略：优先使用用户自定义主键作为主键，如果用户没有定义主键，则选取一个Unique键作为主键，如果表中连Unique键都没有定义的话，则InnoDB会为表默认添加一个名为row_id的隐藏列作为主键</p>
+<p>一个页一般是16KB，当记录中的数据太多，当前页放不下的时候，会把多余的数据存储到其他页中，这种现象称为行溢出</p>
+<h2 id="innndb是如何存储数据的"><a href="#innndb是如何存储数据的" class="headerlink" title="innndb是如何存储数据的"></a>innndb是如何存储数据的</h2><p>InnoDB其实是使用页为基本单位来管理存储空间的，默认的页大小为16KB。</p>
+<p>对于InnoDB存储引擎来说，每个索引都对应着一棵B+树，该B+树的每个节点都是一个数据页，数据页之间不必要是物理连续的，因为数据页之间有双向链表来维护着这些页的顺序。</p>
+<p>InnoDB的聚簇索引的叶子节点存储了完整的用户记录，也就是所谓的索引即数据，数据即索引。</p>
+<p>为了更好的管理这些页，提出了一个表空间或者文件空间（，这个表空间是一个抽象的概念，它可以对应文件系统上一个或多个真实文件（不同表空间对应的文件数量可能不同）。每一个表空间可以被划分为很多很多很多个页。</p>
+<h3 id="匹配左边的列"><a href="#匹配左边的列" class="headerlink" title="匹配左边的列"></a>匹配左边的列</h3><p>有个表中有联合索引 idx_name_birthday_phone_number</p>
+<ul>
+<li>先按照name列的值进行排序。</li>
+<li>如果name列的值相同，则按照birthday列的值进行排序。</li>
+<li>如果birthday列的值也相同，则按照phone_number的值进行排序。</li>
+</ul>
+<p>B+树的数据页和记录先是按照name列的值排序的，在name列的值相同的情况下才使用birthday列进行排序，也就是说name列的值不同的记录中birthday的值可能是无序的。而现在你跳过name列直接根据birthday的值去查找，臣妾做不到呀～ 那如果我就想在只使用birthday的值去通过B+树索引进行查找咋办呢？这好办，你再对birthday列建一个B+树索引就行了，创建索引的语法不用我唠叨了吧。</p>
+<p>但是需要特别注意的一点是，如果我们想使用联合索引中尽可能多的列，搜索条件中的各个列必须是联合索引中从最左边连续的列。</p>
+<h3 id="精确匹配某一列并范围匹配另外一列"><a href="#精确匹配某一列并范围匹配另外一列" class="headerlink" title="精确匹配某一列并范围匹配另外一列"></a>精确匹配某一列并范围匹配另外一列</h3><p>对于同一个联合索引来说，虽然对多个列都进行范围查找时只能用到最左边那个索引列，但是如果左边的列是精确查找，则右边的列可以进行范围查找</p>
+<h3 id="使用联合索引进行排序注意事项"><a href="#使用联合索引进行排序注意事项" class="headerlink" title="使用联合索引进行排序注意事项"></a>使用联合索引进行排序注意事项</h3><p>对于联合索引有个问题需要注意，ORDER BY的子句后边的列的顺序也必须按照索引列的顺序给出，如果给出ORDER BY phone_number, birthday, name的顺序，那也是用不了B+树索引</p>
+<h3 id="ASC、DESC混用"><a href="#ASC、DESC混用" class="headerlink" title="ASC、DESC混用"></a>ASC、DESC混用</h3><p>使用联合索引的各个排序列的排序顺序必须是一致的。</p>
+<h3 id="排序列包含非同一个索引的列"><a href="#排序列包含非同一个索引的列" class="headerlink" title="排序列包含非同一个索引的列"></a>排序列包含非同一个索引的列</h3><p>无法使用索引进行排序</p>
+<h3 id="用于分组"><a href="#用于分组" class="headerlink" title="用于分组"></a>用于分组</h3><p>使用B+树索引进行排序是一个道理，分组列的顺序也需要和索引列的顺序一致，也可以只使用索引列中左边的列进行分组</p>
+<h3 id="回表"><a href="#回表" class="headerlink" title="回表"></a>回表</h3><p>会使用到两个B+树索引，一个二级索引，一个聚簇索引。 访问二级索引使用顺序I/O，访问聚簇索引使用随机I/O。需要回表的记录越多，使用二级索引的性能就越低。</p>
+<h3 id="排序字段的选择"><a href="#排序字段的选择" class="headerlink" title="排序字段的选择"></a>排序字段的选择</h3><ul>
+<li>只为用于搜索、排序或分组的列创建索引</li>
+<li>考虑列的基数，为基数大的列建立索引；</li>
+<li>索引列的类型尽量小，比如int  bigint</li>
+<li>索引字符串值的前缀(B+树索引中的记录需要把该列的完整字符串存储起来，而且字符串越长，在索引中占用的存储空间越大)。只索引字符串值的前缀的策略是我们非常鼓励的，尤其是在字符串类型能存储的字符比较多的时候。</li>
+<li>只有索引列在比较表达式中单独出现才可以使用索引</li>
+<li>为了尽可能少的让聚簇索引发生页面分裂和记录移位的情况，建议让主键拥有AUTO_INCREMENT属性。</li>
+<li>定位并删除表中的重复和冗余索引</li>
+<li>尽量使用覆盖索引进行查询，避免回表带来的性能损耗。</li>
+</ul>
+<h2 id="使用mysql的查询"><a href="#使用mysql的查询" class="headerlink" title="使用mysql的查询"></a>使用mysql的查询</h2><h3 id="const-类型的查询"><a href="#const-类型的查询" class="headerlink" title="const 类型的查询"></a>const 类型的查询</h3><p>通过主键或者唯一二级索引列来定位一条记录的访问方法定义为：const。这种const访问方法只能在主键列或者唯一二级索引列和一个常数进行等值比较时才有效</p>
+<h3 id="ref"><a href="#ref" class="headerlink" title="ref"></a>ref</h3><p>我们当然可以选择全表扫描来逐一对比搜索条件是否满足要求，我们也可以先使用二级索引找到对应记录的id值，然后再回表到聚簇索引中查找完整的用户记录。由于普通二级索引并不限制索引列值的唯一性，所以可能找到多条对应的记录，如果记录比较少效率还是挺高的。但如果记录多，有可能走的是随机io，所以性能会比较低。</p>
+<h3 id="ref-or-null"><a href="#ref-or-null" class="headerlink" title="ref_or_null"></a>ref_or_null</h3><p>不仅想找出某个二级索引列的值等于某个常数的记录，还想把该列的值为NULL的记录也找出来 。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &#x3D; &#39;abc&#39; OR key1 IS NULL;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="eq-ref"><a href="#eq-ref" class="headerlink" title="eq_ref"></a>eq_ref</h3><p>在连接查询中对被驱动表使用主键值或者唯一二级索引列的值进行等值查找的查询执行方式称之为：eq_ref</p>
+<h3 id="index"><a href="#index" class="headerlink" title="index"></a>index</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">SELECT key_part1, key_part2, key_part3 FROM single_table WHERE key_part2 &#x3D; &#39;abc&#39;;</span><br><span class="line"></span><br><span class="line">由于key_part2并不是联合索引idx_key_part最左索引列，所以我们无法使用ref或者range访问方法来执行这个语句</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>我们可以直接通过遍历idx_key_part索引的叶子节点的记录来比较key_part2 = ‘abc’这个条件是否成立，把匹配成功的二级索引记录的key_part1, key_part2, key_part3列的值直接加到结果集中就行了。由于二级索引记录比聚簇索记录小的多（聚簇索引记录要存储所有用户定义的列以及所谓的隐藏列，</p>
+<p>而二级索引记录只需要存放索引列和主键），而且这个过程也不用进行回表操作，所以直接遍历二级索引比直接遍历聚簇索引的成本要小很多</p>
+<h2 id="索引使用的特殊情况"><a href="#索引使用的特殊情况" class="headerlink" title="索引使用的特殊情况"></a>索引使用的特殊情况</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &#x3D; &#39;abc&#39; AND key2 &gt; 1000;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>根据single_table表的统计数据来判断到底使用哪个条件到对应的二级索引中查询扫描的行数会更少，选择那个扫描行数较少的条件到对应的二级索引中查询。</p>
+<p>然后将从该二级索引中查询到的结果经过回表得到完整的用户记录后再根据其余的WHERE条件过滤记录。一般来说，等值查找比范围查找需要扫描的行数更少。</p>
+<p>因为二级索引的节点中的记录只包含索引列和主键，所以在步骤1中使用idx_key1索引进行查询时只会用到与key1列有关的搜索条件，其余条件，比如key2 &gt; 1000这个条件在步骤1中是用不到的，只有在步骤2完成回表操作后才能继续针对完整的用户记录中继续过滤</p>
+<h2 id="索引合并"><a href="#索引合并" class="headerlink" title="索引合并"></a>索引合并</h2><p>某个查询可以使用多个二级索引，将从多个二级索引中查询到的结果取交集</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">SELECT * FROM single_table WHERE key1 &#x3D; &#39;a&#39; AND key3 &#x3D; &#39;b&#39;;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>第一种方案： 按照某个搜索条件读取一个二级索引，根据从该二级索引得到的主键值进行回表操作，然后再过滤其他的搜索条件。</p>
+<p>第二种方案： 按照不同的搜索条件分别读取不同的二级索引，将从多个二级索引得到的主键值取交集，然后进行回表操作。</p>
+<p>虽然读取多个二级索引比读取一个二级索引消耗性能，但是读取二级索引的操作是顺序I/O，而回表操作是随机I/O，所以如果只读取一个二级索引时需要回表的记录数特别多，而读取多个二级索引之后取交集的记录数非常少，当节省的因为回表而造成的性能损耗比访问多个二级索引带来的性能损耗更高时，读取多个二级索引后取交集比只读取一个二级索引的成本更低</p>
+<ul>
+<li>出现索引合并的情况 </li>
+</ul>
+<ol>
+<li>二级索引列是等值匹配的情况，对于联合索引来说，在联合索引中的每个列都必须等值匹配，不能出现只匹配部分列的情况。</li>
+<li>主键列可以是范围匹配 （索引合并会把从多个二级索引中查询出的主键值求交集，如果从各个二级索引中查询的到的结果集本身就是已经按照主键排好序的，那么求交集的过程就很easy）</li>
+</ol>
+<h2 id="连接"><a href="#连接" class="headerlink" title="连接"></a>连接</h2><p><code>内连接</code>中的WHERE子句和ON子句是等价的。</p>
+<p>对于<code>外连接</code>的驱动表的记录来说，如果无法在被驱动表中找到匹配ON子句中的过滤条件的记录，那么该记录仍然会被加入到结果集中，对应的被驱动表记录的各个字段使用NULL值填充。</p>
+<p>对于内连接来说，驱动表和被驱动表是可以互换的，并不会影响最后的查询结果。但是对于外连接来说左外连接和右外连接的驱动表和被驱动表不能轻易互换。</p>
+<h3 id="连接的原理"><a href="#连接的原理" class="headerlink" title="连接的原理"></a>连接的原理</h3><p>两表连接来说，驱动表只会被访问一遍，但被驱动表却要被访问到好多遍。</p>
+<h3 id="全表扫描的代价。计算表的统计信息"><a href="#全表扫描的代价。计算表的统计信息" class="headerlink" title="全表扫描的代价。计算表的统计信息"></a>全表扫描的代价。计算表的统计信息</h3><ul>
+<li>I/O成本： 将数据和索引从硬盘加载到内存中；读取一个页大小的默认成本1.0</li>
+<li>CPU成本： 读取以及检测记录是否满足对应的搜索条件、对结果集进行排序；访问一条记录的成本是0.2</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">show table status like &#39;single_table&#39;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Rows 代表记录的行数，如果是myisam表示的是实际的记录数，innodb表示的是预估值；</li>
+<li>Data_length 表示表占用的存储空间字节数。对于使用InnoDB存储引擎的表来说，该值就相当于聚簇索引占用的存储空间大小。 Data_length = 聚簇索引的页面数量 x 每个页面的大小。</li>
+</ul>
+<h2 id="innodb统计数据"><a href="#innodb统计数据" class="headerlink" title="innodb统计数据"></a>innodb统计数据</h2><p>SHOW TABLES FROM mysql LIKE ‘innodb%’;  // 从mysql库里查询innodb</p>
+<p>SELECT * FROM mysql.innodb_index_stats  //从mysql库里查询索引统计信息</p>
+<p>ANALYZE TABLE;  // ANALYZE TABLE语句会立即重新计算统计数据，也就是这个过程是同步的</p>
+<h2 id="undo-log日志"><a href="#undo-log日志" class="headerlink" title="undo log日志"></a>undo log日志</h2><p>在事务对表中的记录做改动时才会为这个事务分配一个唯一的事务id</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/mysql/" rel="tag"># mysql</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2020-08-04/api%E7%BD%91%E5%85%B3%E4%BB%8B%E7%BB%8D/" rel="prev" title="api网关介绍">
+      <i class="fa fa-chevron-left"></i> api网关介绍
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2020-08-11/mysql%E5%AE%9E%E6%88%98-%E5%9F%BA%E7%A1%80%E6%9E%B6%E6%9E%84/" rel="next" title="mysql实战-基础架构">
+      mysql实战-基础架构 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#innodb%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">innodb的数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Compact-%E6%A0%BC%E5%BC%8F"><span class="nav-number">1.1.</span> <span class="nav-text">Compact 格式</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#innndb%E6%98%AF%E5%A6%82%E4%BD%95%E5%AD%98%E5%82%A8%E6%95%B0%E6%8D%AE%E7%9A%84"><span class="nav-number">2.</span> <span class="nav-text">innndb是如何存储数据的</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8C%B9%E9%85%8D%E5%B7%A6%E8%BE%B9%E7%9A%84%E5%88%97"><span class="nav-number">2.1.</span> <span class="nav-text">匹配左边的列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%B2%BE%E7%A1%AE%E5%8C%B9%E9%85%8D%E6%9F%90%E4%B8%80%E5%88%97%E5%B9%B6%E8%8C%83%E5%9B%B4%E5%8C%B9%E9%85%8D%E5%8F%A6%E5%A4%96%E4%B8%80%E5%88%97"><span class="nav-number">2.2.</span> <span class="nav-text">精确匹配某一列并范围匹配另外一列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8%E8%81%94%E5%90%88%E7%B4%A2%E5%BC%95%E8%BF%9B%E8%A1%8C%E6%8E%92%E5%BA%8F%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="nav-number">2.3.</span> <span class="nav-text">使用联合索引进行排序注意事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ASC%E3%80%81DESC%E6%B7%B7%E7%94%A8"><span class="nav-number">2.4.</span> <span class="nav-text">ASC、DESC混用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%92%E5%BA%8F%E5%88%97%E5%8C%85%E5%90%AB%E9%9D%9E%E5%90%8C%E4%B8%80%E4%B8%AA%E7%B4%A2%E5%BC%95%E7%9A%84%E5%88%97"><span class="nav-number">2.5.</span> <span class="nav-text">排序列包含非同一个索引的列</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%A8%E4%BA%8E%E5%88%86%E7%BB%84"><span class="nav-number">2.6.</span> <span class="nav-text">用于分组</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%9E%E8%A1%A8"><span class="nav-number">2.7.</span> <span class="nav-text">回表</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%92%E5%BA%8F%E5%AD%97%E6%AE%B5%E7%9A%84%E9%80%89%E6%8B%A9"><span class="nav-number">2.8.</span> <span class="nav-text">排序字段的选择</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8mysql%E7%9A%84%E6%9F%A5%E8%AF%A2"><span class="nav-number">3.</span> <span class="nav-text">使用mysql的查询</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#const-%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%9F%A5%E8%AF%A2"><span class="nav-number">3.1.</span> <span class="nav-text">const 类型的查询</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref"><span class="nav-number">3.2.</span> <span class="nav-text">ref</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ref-or-null"><span class="nav-number">3.3.</span> <span class="nav-text">ref_or_null</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#eq-ref"><span class="nav-number">3.4.</span> <span class="nav-text">eq_ref</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#index"><span class="nav-number">3.5.</span> <span class="nav-text">index</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E4%BD%BF%E7%94%A8%E7%9A%84%E7%89%B9%E6%AE%8A%E6%83%85%E5%86%B5"><span class="nav-number">4.</span> <span class="nav-text">索引使用的特殊情况</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B4%A2%E5%BC%95%E5%90%88%E5%B9%B6"><span class="nav-number">5.</span> <span class="nav-text">索引合并</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5"><span class="nav-number">6.</span> <span class="nav-text">连接</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%9E%E6%8E%A5%E7%9A%84%E5%8E%9F%E7%90%86"><span class="nav-number">6.1.</span> <span class="nav-text">连接的原理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%A8%E8%A1%A8%E6%89%AB%E6%8F%8F%E7%9A%84%E4%BB%A3%E4%BB%B7%E3%80%82%E8%AE%A1%E7%AE%97%E8%A1%A8%E7%9A%84%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF"><span class="nav-number">6.2.</span> <span class="nav-text">全表扫描的代价。计算表的统计信息</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#innodb%E7%BB%9F%E8%AE%A1%E6%95%B0%E6%8D%AE"><span class="nav-number">7.</span> <span class="nav-text">innodb统计数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#undo-log%E6%97%A5%E5%BF%97"><span class="nav-number">8.</span> <span class="nav-text">undo log日志</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="陈伟杰"
+      src="/images/favicon.ico">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/chenwj1103" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;chenwj1103" rel="noopener" target="_blank"><i class="github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

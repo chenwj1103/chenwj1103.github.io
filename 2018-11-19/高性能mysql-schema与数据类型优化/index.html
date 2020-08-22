@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="选择优化的数据类型 更小的通常更好  一般情况下，使用可以正确存储数据的最小数据类型，更小的类型通常更快，需要更小的磁盘、内存以及cpu缓存。但是需要确保没有低估需要存储的值的范围。  简单就好  简单的数据类型操作通常需要更少的cpu周期。整型比字符串操作代价更低，字符集和校对规则使字符比较耿复杂；应该使用mysql内建类型而不是使用字符串来存储日期和时间。  尽量避免null  null值是列">
+<meta property="og:type" content="article">
+<meta property="og:title" content="高性能mysql-schema与数据类型优化">
+<meta property="og:url" content="http://www.chenwj.cn/2018-11-19/%E9%AB%98%E6%80%A7%E8%83%BDmysql-schema%E4%B8%8E%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E4%BC%98%E5%8C%96/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="选择优化的数据类型 更小的通常更好  一般情况下，使用可以正确存储数据的最小数据类型，更小的类型通常更快，需要更小的磁盘、内存以及cpu缓存。但是需要确保没有低估需要存储的值的范围。  简单就好  简单的数据类型操作通常需要更少的cpu周期。整型比字符串操作代价更低，字符集和校对规则使字符比较耿复杂；应该使用mysql内建类型而不是使用字符串来存储日期和时间。  尽量避免null  null值是列">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-11-19T01:48:53.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.843Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="mysql">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://www.chenwj.cn/2018-11-19/%E9%AB%98%E6%80%A7%E8%83%BDmysql-schema%E4%B8%8E%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E4%BC%98%E5%8C%96/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>高性能mysql-schema与数据类型优化 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="茄子的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">68</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">26</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">75</span></a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2018-11-19/%E9%AB%98%E6%80%A7%E8%83%BDmysql-schema%E4%B8%8E%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E4%BC%98%E5%8C%96/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/favicon.ico">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          高性能mysql-schema与数据类型优化
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-11-19 09:48:53" itemprop="dateCreated datePublished" datetime="2018-11-19T09:48:53+08:00">2018-11-19</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E9%AB%98%E6%80%A7%E8%83%BDmysql/" itemprop="url" rel="index"><span itemprop="name">高性能mysql</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5.2k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="选择优化的数据类型"><a href="#选择优化的数据类型" class="headerlink" title="选择优化的数据类型"></a>选择优化的数据类型</h1><ul>
+<li>更小的通常更好</li>
+</ul>
+<p>一般情况下，使用可以正确存储数据的最小数据类型，更小的类型通常更快，需要更小的磁盘、内存以及cpu缓存。但是需要确保没有低估需要存储的值的范围。</p>
+<ul>
+<li>简单就好</li>
+</ul>
+<p>简单的数据类型操作通常需要更少的cpu周期。整型比字符串操作代价更低，字符集和校对规则使字符比较耿复杂；应该使用mysql内建类型而不是使用字符串来存储日期和时间。</p>
+<ul>
+<li>尽量避免null</li>
+</ul>
+<p>null值是列的默认属性，最好指定not null,除非真的需要null值。</p>
+<p>可为null的列，对mysql来说更难优化，null使得索引、索引统计和值比较都更为复杂，可为null的列会使用更多的存储空间。</p>
+<h2 id="整数类型"><a href="#整数类型" class="headerlink" title="整数类型"></a>整数类型</h2><p>有两种存储类型，整数和实数。整数类型 tinyint（8）、smallint（16）、mediumint（24）、int（32）、bigint（64）。位存储空间，范围从-2的（n-1）次幂到2的（n-1）次幂。其中n是存储空间的位数。</p>
+<p>整数类型有可选的unsigned属性，表示允许负值，大致可以使得存储范围上限提高一倍。例如tinyint unsigned可以是0-255，而tinyint的存储范围是-128至127</p>
+<p>有符号和无符号类型使用相同的存储空间，并具有相同的性能，根据实际情况选择。</p>
+<p>mysql可以为整数类型指定宽度，例如int(11)对大多数应用是没有意义的：它不会限制值的合法范围，只是规定mysql的一些交互工具（如mysql命令行客户端）来显示字符的格式，对于存储来说，int(1)和int(20)是一样的。</p>
+<h2 id="实数类型"><a href="#实数类型" class="headerlink" title="实数类型"></a>实数类型</h2><ul>
+<li><p>实数是带有小数部分的数字。DECIMAL可以存储比bigInt还大的整数。DECIMAL类型用于存储精确的小数，DECIMAL支持精确的计算。cpu不支持对DECIMAL的直接结算，mysql服务器自身实现了DECIMAL的高精度计算。</p>
+</li>
+<li><p>浮点和DECIMAL类型都可以指定精度。DECIMAL在5.0以上版本允许存储65个数字，DECIMAL实际上不能再计算中使用这么大的数字，因为DECIMAL只是一种存储格式：因为在计算中DECIMAL会转换为DOUBLE类型。</p>
+</li>
+<li><p>因为需要额外的空间和计算开销，所以应该尽量只在对小数进行精确计算时才使用DECIMAL-例如财务数据，尽量在数据量比较大的情况下使用bigInt代替DECIMAL，将需要存储的货币单位乘以相应的倍数即可。</p>
+</li>
+</ul>
+<h2 id="字符串类型"><a href="#字符串类型" class="headerlink" title="字符串类型"></a>字符串类型</h2><p>每个字符串可以定义自己的字符集和排序规则或者说校对规则。</p>
+<h3 id="VARCHAR和CHAR类型"><a href="#VARCHAR和CHAR类型" class="headerlink" title="VARCHAR和CHAR类型"></a>VARCHAR和CHAR类型</h3><p>存储VARCHAR和CHAR值的方式在内存中和磁盘上可能不一样，所以mysql服务器从存储引擎读出的值可能需要转换为另一种存储格式。</p>
+<h4 id="VARCHAR"><a href="#VARCHAR" class="headerlink" title="VARCHAR"></a>VARCHAR</h4><ul>
+<li><p>VARCHAR存储可变长字符串,最常见。比定长的类型节省空间，只使用必要的空间，row_format=fixed的时候，每一行使用必要的空间。</p>
+</li>
+<li><p>varchar使用1-2字节记录字符串长度,长度&gt;255用2，&lt;255用1.可以提升性能。但是由于变长，如果update操作使得某个字段空间增长，innodb使用分裂页来使得行放进页内。</p>
+</li>
+</ul>
+<p><strong>适合使用varchar</strong></p>
+<p>字符串的最大长度比平均长度的大很多的、列的更新少的（碎片不是问题）、使用UTF-8这样的复杂的字符集，每个字符使用不同的字节数压缩；</p>
+<h4 id="CHAR"><a href="#CHAR" class="headerlink" title="CHAR"></a>CHAR</h4><p>定长，总是根据定义的字符串长度分配足够的空间。存储char值时，删除末尾的空格，会根据长度进行填充以方便比较。</p>
+<p>适合存储很短的字符串或者值长度接近的。经常变更的数据，char也比varchar更好，定长的char不容易产生过碎片。</p>
+<p><code>注意</code>：</p>
+<p>某个字符串尾部的空格，varchar类型的会显示，char类型的会被去掉（在末尾填充空格只是存储，显示的时候不会显示）。</p>
+<h4 id="binary和varbinary"><a href="#binary和varbinary" class="headerlink" title="binary和varbinary"></a>binary和varbinary</h4><p>存储二进制字符串。存储的是字节码不是字符串；填充binary采用的是\0（零字节）而不是空格，检索时不会去掉填充值；</p>
+<p><strong>优势</strong></p>
+<p>存储二进制数据，希望mysql使用字节码而不是字符串比较。二进制不仅仅体现在大小写敏感上，比较binary字符串时，每次按照一个字节，根据字节的数值比较，比字符快很多。</p>
+<p><code>注意</code>：</p>
+<p>使用varchar（5）和varchar（200）存储‘hello’的存储开销是一样的，但是更短的列有很大的优势。更长的列会消耗更多的内存，尤其在使用内存临时表进行排序等操作时更糟糕。</p>
+<h3 id="blob和text类型"><a href="#blob和text类型" class="headerlink" title="blob和text类型"></a>blob和text类型</h3><p>都是为大数据存储设计的字符串类型，分别采用二进制和字符方式存储。text是smalltext的同义词，blob是smallblob的同义词</p>
+<ul>
+<li><p>字符类型：tinytext、smalltext、text、mediumtext、longtext.</p>
+</li>
+<li><p>二进制类型：tinyblob、smallblob、blob、mediumblob、longblob。</p>
+</li>
+</ul>
+<p>会把每个blob和text当做独立对象处理。存储引擎存储时会做特殊处理，当text、blob太大时，会在行内存储1-4个字节的指针，在专门的外部存储区域存储实际的值。</p>
+<p><code>区别</code>：</p>
+<p>blob和text区别是使用二进制存储，没有排序规则或字符集，而text类型有字符集和排序规则；</p>
+<p>mysql对blob和text的排序与其他类型不同，它支队没格列的最前的max_sort_length字节而不是整个字符串做排序，而不是整个字符串。如果字需要一部分字符，则可以减少max_sort_length的配置。</p>
+<p>mysql不能使用它们的全部长度进行索引。</p>
+<p><code>注意</code></p>
+<p>尽量不要使用blob和text类型存储，无法避免的话在所有用到blob字段的地方使用subString(column,length)将列值转换为字符串。</p>
+<h2 id="日期和时间类型"><a href="#日期和时间类型" class="headerlink" title="日期和时间类型"></a>日期和时间类型</h2><p>mysql最小的时间粒度为秒。但是可以使用微秒级的粒度进行计算。mysql提供datetime和timestamp两种日期类型格式。除了特殊情况，通常尽量使用TIMESTAMP，因为它比DATETIME空间效率高。有人会使用整数存储时间截的格式不方便处理。</p>
+<p>但是如果需要存储微秒级别的数据则尅使用bigint类型存储微秒级别的时间戳。</p>
+<h3 id="DATETIME"><a href="#DATETIME" class="headerlink" title="DATETIME"></a>DATETIME</h3><p>存储范围 1001-9999，精度秒，它吧日期和时间封装到格式为YYYYMMDDHHMMSS的整数中，与时区无关，使用8个字节的存储空间，默认以一种尅排序的无歧义的格式显示，如`2008-01-16 22:37:08``</p>
+<h4 id="TIMESTAMP"><a href="#TIMESTAMP" class="headerlink" title="TIMESTAMP"></a>TIMESTAMP</h4><p>可以存储从1970年以来的秒数，使用4个字节存储空间，范围比DATETIME小得多，只能表示1970至2038年，mysql提供了from_unixtime()函数把时间戳转换为日，并提供unix_timestamp（）把日期转换为unix时间戳。</p>
+<p>TIMESTAMP依赖时区，服务器、操作系统、客户端连接都有时区设置。它在不同的时区显示的时间是不同的。</p>
+<p>TIMESTAMP类型默认为not null，默认为当前的时间。</p>
+<h2 id="位数据类型"><a href="#位数据类型" class="headerlink" title="位数据类型"></a>位数据类型</h2><p>mysql有几种存储类型使用紧凑的位存储类型数据，所有这些位类型，不管底层存储的格式和处理方式如何，从技术上来说都还是字符串类型。</p>
+<h3 id="BIT"><a href="#BIT" class="headerlink" title="BIT"></a>BIT</h3><p>在mysql5.0之前bit是tinyint的同义词，之后的版本bit是完全不同的数据类型。</p>
+<p>bit列在一列中存储一个或多个true/false值， bit(1)定义一个包含单个位的字段，bit位最大的长度为64个位。</p>
+<p>bit的行为因存储引擎而异，mylSam会打包所有的bit位，所以17个单独的bit列只需要17个存储位，这样mylSam只能使用三个字节就能存储17个bit列。其它存储引擎如Memory何innoDB，为每个bit位使用一个足够存储的最小整数来存储，所以不能节省存储空间。</p>
+<p>mysql把bit位要当做字符串存储，而不是数字类型，咋整数数字上下文的场景检索时，结果是将位字符转化为数字。这个不太好理解，所以大部分应用，最好避免使用这种类型。</p>
+<h3 id="SET"><a href="#SET" class="headerlink" title="SET"></a>SET</h3><p>打包set数据集和类型，他在mysql内部是使用一系列的打包的位的集合来表示的。</p>
+<h2 id="选择标识符"><a href="#选择标识符" class="headerlink" title="选择标识符"></a>选择标识符</h2><p>标识符类型就是关联表所使用的类型，要考虑这种类型如何计算和比较。例如存储整数使用enum和set类型，在比较时转化为字符串。</p>
+<p>enum和set使用存储固定信息。</p>
+<p>尽可能避免使用字符串类型作为表示列，因为他们很消耗空间，通常比数字类型慢。尤其在使用MylSAM表里使用字符串作为标识列时要特别小心，MylSAM默认对字符串使用压缩索引，这样会导致查询慢很多。</p>
+<h2 id="特殊类型的数据"><a href="#特殊类型的数据" class="headerlink" title="特殊类型的数据"></a>特殊类型的数据</h2><p>某些类型的数据并不能直接与内置类型一直。低于秒级别的时间戳就是一个列子。</p>
+<h1 id="Mysql-schema设计中的缺陷"><a href="#Mysql-schema设计中的缺陷" class="headerlink" title="Mysql schema设计中的缺陷"></a>Mysql schema设计中的缺陷</h1><p>虽然有一些普遍的好或坏的设计原，但有一些问题还是由MySQL的实现机制导致的。</p>
+<ul>
+<li>太多的列</li>
+</ul>
+<p>mysql的存储引擎API工作时需要在服务器层和存储引擎层之间通过行缓冲格式拷贝数据，然后在服务器层将缓冲内容解码成个格列。从缓冲中将编码过的列转换成数据结构的操作代价是非常高的。</p>
+<ul>
+<li>太多的关联</li>
+</ul>
+<p>表过多的关联回合降低性能，单个查询最好在12个表以内做关联。</p>
+<ul>
+<li>枚举</li>
+</ul>
+<p>如果有枚举的情况存在，尽量使用一张字典表或者查找表来找具体的值。</p>
+<ul>
+<li>NUll</li>
+</ul>
+<p>尽可能的避免使用null，如果一定要使用空值，可以使用0或者某个特殊的值代替。</p>
+<p>但是不要走极端，因为-1带表未知的整数，可能导致代码复杂很多。比如date类型的 not null default ‘0000-00-00 00:00:00’</p>
+<p> -*/</p>
+<h1 id="范式和反范式"><a href="#范式和反范式" class="headerlink" title="范式和反范式"></a>范式和反范式</h1><p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/linjiqin/archive/2012/04/01/2428695.html">数据库的三大范式</a></p>
+<h2 id="范式的优点和缺点"><a href="#范式的优点和缺点" class="headerlink" title="范式的优点和缺点"></a>范式的优点和缺点</h2><ul>
+<li>范式的更新操作通常比反范式的块；</li>
+<li>更好的范式化，更少或者没有重复数据，所以修改更少的数据；</li>
+<li>范式化的表通常更小，更好的存储在内存中；</li>
+<li>很少有多余的数据以为这检索表数据时更少需要distinct或者group by语句。</li>
+</ul>
+<p>范式化设计的schema缺点是需要关联，稍微负载一些的查询语句符合范式化的schema可能需要一次关联。</p>
+<h2 id="反范式的有点和缺点"><a href="#反范式的有点和缺点" class="headerlink" title="反范式的有点和缺点"></a>反范式的有点和缺点</h2><p>反范式的schema因为所有数据都在一张表中，可以很好的避免关联。</p>
+<p>关联是的需要在一个索引中又排序又过滤。如果采用反范式化组织数据，将两张表的字段合并一下，只需要增加一个索引，这样不通过关联写出这个查询，这将会非常高效。</p>
+<h2 id="混合范式化和反范式化"><a href="#混合范式化和反范式化" class="headerlink" title="混合范式化和反范式化"></a>混合范式化和反范式化</h2><p>在实际的使用中不用完全范式话，这避免了完全反范式化的插入和删除的问题。</p>
+<h1 id="缓存表和汇总表"><a href="#缓存表和汇总表" class="headerlink" title="缓存表和汇总表"></a>缓存表和汇总表</h1><p>有时提升性能最好的方法是在同一张表保存衍生的冗余数据，然后有时也需要创建一张完全独立的汇总表或缓存表。</p>
+<p><strong>缓存表</strong>表示存储那些可以简单的从schema其他表获取（但是每次获取的速度比较慢）数据的表。</p>
+<p><strong>汇总表</strong>保存的是使用group by语句聚合数据的表，或者被称为累计表。</p>
+<h1 id="加快alter-table的操作速度"><a href="#加快alter-table的操作速度" class="headerlink" title="加快alter table的操作速度"></a>加快alter table的操作速度</h1><p>mysql的alter table操作的性能对大表来说是个大问题。mysql执行大部分修改表结构的操作的方法是用新的结构创建一个空表，然后从旧表中查询出所有数据插入新表，然后删除旧表。</p>
+<p>这样操作会话费很长时间，如果内存不足而且表又很大，还有很多索引的情况下尤其如此。</p>
+<h2 id="大部分alter-table操作导致mysql服务中断。"><a href="#大部分alter-table操作导致mysql服务中断。" class="headerlink" title="大部分alter table操作导致mysql服务中断。"></a>大部分alter table操作导致mysql服务中断。</h2><p>提供2中使用的技巧：</p>
+<ul>
+<li>现在一台不提供服务的机器上执行alter table操作，然后和提供服务的主库进行切换；</li>
+<li>‘影子拷贝’，用要求的表结构创建一张和原表无关的新表，然后通过重命名和删除表交换两张表；</li>
+</ul>
+<p>假如需要修改某列的默认值，可以直接修改.frm文件中。但是mysql不支持。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">alter table sakila.film alter column rental_duration set DEFAULT 5;</span><br></pre></td></tr></table></figure>
+
+<p>这个语句会直接修改.frm文件不涉及表结构，所以操作是非常快的。</p>
+<h2 id="快速创建MylSAM索引"><a href="#快速创建MylSAM索引" class="headerlink" title="快速创建MylSAM索引"></a>快速创建MylSAM索引</h2><p>一个技巧是先禁用索引、载入数据然后重启索引：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">alter table test.load_data disable keys;</span><br><span class="line"></span><br><span class="line">-- load the data</span><br><span class="line"></span><br><span class="line">alter table test.load_data enable keys;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>这个对唯一索引无效， disable keys 只对非唯一索引有效。MylSAM会在内存中构造唯一索引，并且为载入的每一行检查唯一性，一旦索引的大小超过了有效内存的大小，载入操作就非常慢。</p>
+<h1 id="schema设计原则总结"><a href="#schema设计原则总结" class="headerlink" title="schema设计原则总结"></a>schema设计原则总结</h1><ul>
+<li>尽快避免过度设计，例如会导致极其复杂查询的schema设计，或者很多列的表设计；</li>
+<li>使用小而简单的合适数据类型，除非真是数据模型中确切需要，否则尽量避免使用NUll值；</li>
+<li>尽量使用相同的数据类型存储相似或者相关的值，尤其是要在关联查询中使用到的列；</li>
+<li>注意使用可变长字符串，其在临时表和排序时会导致悲观的按照最大长度分配内存；</li>
+<li>尽量使用整型定义标识列；</li>
+<li>尽量避免使用mysql遗弃的特性（指定浮点数的精度，或者整数显示宽度）小新使用enum和set，最好避免使用bit；</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/mysql/" rel="tag"># mysql</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-11-14/git%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4%E6%80%BB%E7%BB%93/" rel="prev" title="git常用命令总结">
+      <i class="fa fa-chevron-left"></i> git常用命令总结
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-11-28/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E5%88%9B%E5%BB%BA%E9%AB%98%E6%80%A7%E8%83%BD%E7%9A%84%E7%B4%A2%E5%BC%95/" rel="next" title="高性能mysql-创建高性能的索引">
+      高性能mysql-创建高性能的索引 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%80%89%E6%8B%A9%E4%BC%98%E5%8C%96%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.</span> <span class="nav-text">选择优化的数据类型</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B4%E6%95%B0%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.1.</span> <span class="nav-text">整数类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E6%95%B0%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.2.</span> <span class="nav-text">实数类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.3.</span> <span class="nav-text">字符串类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#VARCHAR%E5%92%8CCHAR%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.3.1.</span> <span class="nav-text">VARCHAR和CHAR类型</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#VARCHAR"><span class="nav-number">1.3.1.1.</span> <span class="nav-text">VARCHAR</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#CHAR"><span class="nav-number">1.3.1.2.</span> <span class="nav-text">CHAR</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#binary%E5%92%8Cvarbinary"><span class="nav-number">1.3.1.3.</span> <span class="nav-text">binary和varbinary</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#blob%E5%92%8Ctext%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.3.2.</span> <span class="nav-text">blob和text类型</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A5%E6%9C%9F%E5%92%8C%E6%97%B6%E9%97%B4%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.4.</span> <span class="nav-text">日期和时间类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#DATETIME"><span class="nav-number">1.4.1.</span> <span class="nav-text">DATETIME</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#TIMESTAMP"><span class="nav-number">1.4.1.1.</span> <span class="nav-text">TIMESTAMP</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%8D%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B"><span class="nav-number">1.5.</span> <span class="nav-text">位数据类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#BIT"><span class="nav-number">1.5.1.</span> <span class="nav-text">BIT</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SET"><span class="nav-number">1.5.2.</span> <span class="nav-text">SET</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%89%E6%8B%A9%E6%A0%87%E8%AF%86%E7%AC%A6"><span class="nav-number">1.6.</span> <span class="nav-text">选择标识符</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%89%B9%E6%AE%8A%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%95%B0%E6%8D%AE"><span class="nav-number">1.7.</span> <span class="nav-text">特殊类型的数据</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Mysql-schema%E8%AE%BE%E8%AE%A1%E4%B8%AD%E7%9A%84%E7%BC%BA%E9%99%B7"><span class="nav-number">2.</span> <span class="nav-text">Mysql schema设计中的缺陷</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%8C%83%E5%BC%8F%E5%92%8C%E5%8F%8D%E8%8C%83%E5%BC%8F"><span class="nav-number">3.</span> <span class="nav-text">范式和反范式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8C%83%E5%BC%8F%E7%9A%84%E4%BC%98%E7%82%B9%E5%92%8C%E7%BC%BA%E7%82%B9"><span class="nav-number">3.1.</span> <span class="nav-text">范式的优点和缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%8D%E8%8C%83%E5%BC%8F%E7%9A%84%E6%9C%89%E7%82%B9%E5%92%8C%E7%BC%BA%E7%82%B9"><span class="nav-number">3.2.</span> <span class="nav-text">反范式的有点和缺点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B7%B7%E5%90%88%E8%8C%83%E5%BC%8F%E5%8C%96%E5%92%8C%E5%8F%8D%E8%8C%83%E5%BC%8F%E5%8C%96"><span class="nav-number">3.3.</span> <span class="nav-text">混合范式化和反范式化</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%93%E5%AD%98%E8%A1%A8%E5%92%8C%E6%B1%87%E6%80%BB%E8%A1%A8"><span class="nav-number">4.</span> <span class="nav-text">缓存表和汇总表</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8A%A0%E5%BF%ABalter-table%E7%9A%84%E6%93%8D%E4%BD%9C%E9%80%9F%E5%BA%A6"><span class="nav-number">5.</span> <span class="nav-text">加快alter table的操作速度</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%A7%E9%83%A8%E5%88%86alter-table%E6%93%8D%E4%BD%9C%E5%AF%BC%E8%87%B4mysql%E6%9C%8D%E5%8A%A1%E4%B8%AD%E6%96%AD%E3%80%82"><span class="nav-number">5.1.</span> <span class="nav-text">大部分alter table操作导致mysql服务中断。</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BF%AB%E9%80%9F%E5%88%9B%E5%BB%BAMylSAM%E7%B4%A2%E5%BC%95"><span class="nav-number">5.2.</span> <span class="nav-text">快速创建MylSAM索引</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#schema%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99%E6%80%BB%E7%BB%93"><span class="nav-number">6.</span> <span class="nav-text">schema设计原则总结</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="陈伟杰"
+      src="/images/favicon.ico">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/chenwj1103" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;chenwj1103" rel="noopener" target="_blank"><i class="github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

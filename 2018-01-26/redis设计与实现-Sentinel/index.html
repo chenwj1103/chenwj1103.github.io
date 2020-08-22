@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Sentinel是redis的高可用性(High availability)的解决方案.有一个或者多个Sentinel的实例组成的Sentinel系统可以监视任意多个主服务器以及这些主服务器下的从服务器.当主服务下线的时候,从服务器会成为主服务器来执行主服务器的任务. 双环代表主服务器,单环代表从服务器  在主服务下线的时候,三个从服务器停止对主服务器的复制.  当server1的下线时间超过用户">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis设计与实现-Sentinel">
+<meta property="og:url" content="http://www.chenwj.cn/2018-01-26/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-Sentinel/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="Sentinel是redis的高可用性(High availability)的解决方案.有一个或者多个Sentinel的实例组成的Sentinel系统可以监视任意多个主服务器以及这些主服务器下的从服务器.当主服务下线的时候,从服务器会成为主服务器来执行主服务器的任务. 双环代表主服务器,单环代表从服务器  在主服务下线的时候,三个从服务器停止对主服务器的复制.  当server1的下线时间超过用户">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E6%9C%8D%E5%8A%A1%E5%99%A8%E4%BB%A5Sentinel%E7%B3%BB%E7%BB%9F.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E4%B8%8B%E7%BA%BF.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB%E4%BB%A5%E5%8F%8A%E5%8E%9F%E6%9D%A5%E7%9A%84%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%81%A2%E5%A4%8D.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/master1%E7%9A%84%E5%AE%9E%E4%BE%8B%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/master2%E7%9A%84%E5%AE%9E%E4%BE%8B%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/sentinel%E7%8A%B6%E6%80%81%E4%BB%A5%E5%8F%8Amaster%E5%AD%97%E5%85%B8.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/info%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%92%8C%E5%AE%83%E7%9A%84%E4%B8%89%E4%B8%AA%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/sentinel%E4%B8%8E%E5%90%84%E4%B8%AA%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%BB%BA%E7%AB%8B%E5%91%BD%E4%BB%A4%E8%BF%9E%E6%8E%A5%E5%92%8C%E8%AE%A2%E9%98%85%E8%BF%9E%E6%8E%A5.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E5%9B%9E%E5%A4%8D.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E5%AE%9E%E4%BE%8B%E7%BB%93%E6%9E%84.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/sentinel%E5%8F%91%E9%80%81%E5%91%BD%E4%BB%A4%E7%9A%84%E6%A0%BC%E5%BC%8F.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E9%80%89%E4%B8%BE%E9%A2%86%E5%A4%B4Sentinel%E7%9A%84%E6%B3%95%E5%88%991.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E9%80%89%E4%B8%BE%E9%A2%86%E5%A4%B4Sentinel%E7%9A%84%E6%B3%95%E5%88%992.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E4%B8%BB%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%8C%91%E9%80%89%E8%A7%84%E5%88%99.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/%E8%AE%A9%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%A4%8D%E5%88%B6%E6%96%B0%E7%9A%84%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/server3%E5%92%8Cserver4%E6%88%90%E4%B8%BAserver2%E7%9A%84%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/redis/sentinel/server1%E9%87%8D%E6%96%B0%E4%B8%8A%E7%BA%BF%E6%88%90%E4%B8%BAserver2%E7%9A%84%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8.png">
+<meta property="article:published_time" content="2018-01-25T16:02:28.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.828Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="Sentinel,redis">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://www.chenwj.cn/images/redis/sentinel/%E6%9C%8D%E5%8A%A1%E5%99%A8%E4%BB%A5Sentinel%E7%B3%BB%E7%BB%9F.png">
+
+<link rel="canonical" href="http://www.chenwj.cn/2018-01-26/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-Sentinel/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>redis设计与实现-Sentinel | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="茄子的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">68</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">26</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">75</span></a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2018-01-26/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-Sentinel/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/favicon.ico">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          redis设计与实现-Sentinel
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-01-26 00:02:28" itemprop="dateCreated datePublished" datetime="2018-01-26T00:02:28+08:00">2018-01-26</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/redis/" itemprop="url" rel="index"><span itemprop="name">redis</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>7.1k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>6 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>Sentinel是redis的高可用性(High availability)的解决方案.有一个或者多个Sentinel的实例组成的Sentinel系统可以监视任意多个主服务器以及这些主服务器下的从服务器.当主服务下线的时候,从服务器会成为主服务器来执行主服务器的任务.</p>
+<p>双环代表主服务器,单环代表从服务器</p>
+<p><img src="/images/redis/sentinel/%E6%9C%8D%E5%8A%A1%E5%99%A8%E4%BB%A5Sentinel%E7%B3%BB%E7%BB%9F.png" alt="服务器以Sentinel系统"></p>
+<p>在主服务下线的时候,三个从服务器停止对主服务器的复制.</p>
+<p><img src="/images/redis/sentinel/%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E4%B8%8B%E7%BA%BF.png" alt="主服务器下线"></p>
+<p>当server1的下线时间超过用户设定的下线时长上限时,sentinel系统会对server1进行故障转移.</p>
+<ol>
+<li>首先sentinel系统挑选server1属下的其中一个从服务器,并将这个被选中的从服务器升级为新的主服务器.</li>
+<li>之后,sentinel系统会向server1属下的所有从服务器发送新的复制指令,让他们成为新的主服务器的从服务器.当所有的从服务器都开始复制新的主服务器时,故障转移操作执行完毕.</li>
+<li>另外,sentinel会继续监视server1,并在它重新上线时,将他设置为新的主服务器的从服务器.</li>
+</ol>
+<p><img src="/images/redis/sentinel/%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB%E4%BB%A5%E5%8F%8A%E5%8E%9F%E6%9D%A5%E7%9A%84%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%81%A2%E5%A4%8D.png" alt="故障转移以及原来的服务器恢复"></p>
+<h1 id="启动并初始化Sentinel"><a href="#启动并初始化Sentinel" class="headerlink" title="启动并初始化Sentinel"></a>启动并初始化Sentinel</h1><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redis-3.2.10&#x2F;src$ .&#x2F;redis-sentinel ..&#x2F;sentinel.conf &amp;</span><br><span class="line">[2] 13772</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redis-3.2.10&#x2F;src$ 13772:X 27 Jan 01:05:25.512 * Increased maximum number of open files to 10032 (it was originally set to 1024).</span><br><span class="line">                _._                                                  </span><br><span class="line">           _.-&#96;&#96;__ &#39;&#39;-._                                             </span><br><span class="line">      _.-&#96;&#96;    &#96;.  &#96;_.  &#39;&#39;-._           Redis 3.2.10 (00000000&#x2F;0) 64 bit</span><br><span class="line">  .-&#96;&#96; .-&#96;&#96;&#96;.  &#96;&#96;&#96;\&#x2F;    _.,_ &#39;&#39;-._                                   </span><br><span class="line"> (    &#39;      ,       .-&#96;  | &#96;,    )     Running in sentinel mode</span><br><span class="line"> |&#96;-._&#96;-...-&#96; __...-.&#96;&#96;-._|&#39;&#96; _.-&#39;|     Port: 26379</span><br><span class="line"> |    &#96;-._   &#96;._    &#x2F;     _.-&#39;    |     PID: 13772</span><br><span class="line">  &#96;-._    &#96;-._  &#96;-.&#x2F;  _.-&#39;    _.-&#39;                                   </span><br><span class="line"> |&#96;-._&#96;-._    &#96;-.__.-&#39;    _.-&#39;_.-&#39;|                                  </span><br><span class="line"> |    &#96;-._&#96;-._        _.-&#39;_.-&#39;    |           http:&#x2F;&#x2F;redis.io        </span><br><span class="line">  &#96;-._    &#96;-._&#96;-.__.-&#39;_.-&#39;    _.-&#39;                                   </span><br><span class="line"> |&#96;-._&#96;-._    &#96;-.__.-&#39;    _.-&#39;_.-&#39;|                                  </span><br><span class="line"> |    &#96;-._&#96;-._        _.-&#39;_.-&#39;    |                                  </span><br><span class="line">  &#96;-._    &#96;-._&#96;-.__.-&#39;_.-&#39;    _.-&#39;                                   </span><br><span class="line">      &#96;-._    &#96;-.__.-&#39;    _.-&#39;                                       </span><br><span class="line">          &#96;-._        _.-&#39;                                           </span><br><span class="line">              &#96;-.__.-&#39;                                               </span><br><span class="line"></span><br><span class="line">13772:X 27 Jan 01:05:25.514 # WARNING: The TCP backlog setting of 511 cannot be enforced because &#x2F;proc&#x2F;sys&#x2F;net&#x2F;core&#x2F;somaxconn is set to the lower value of 128.</span><br><span class="line">13772:X 27 Jan 01:05:25.514 # Sentinel ID is 9aa0e1e3a36ac2fa2e414ba752645816167f943e</span><br><span class="line">13772:X 27 Jan 01:05:25.514 # +monitor master mymaster 127.0.0.1 6379 quorum 2</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>启动Sentinel的时候,它要执行以下操作</p>
+<ol>
+<li>初始化服务器。</li>
+<li>将普通 Redis 服务器使用的代码替换成 Sentinel 专用代码。</li>
+<li>初始化 Sentinel 状态。</li>
+<li>根据给定的配置文件， 初始化 Sentinel 的监视主服务器列表。</li>
+<li>创建连向主服务器的网络连接。</li>
+</ol>
+<h2 id="初始化服务器"><a href="#初始化服务器" class="headerlink" title="初始化服务器"></a>初始化服务器</h2><p>首先， 因为 Sentinel 本质上只是一个运行在特殊模式下的 Redis 服务器， 所以启动 Sentinel 的第一步， 就是初始化一个普通的 Redis 服务器， 具体的步骤和《服务器》一章介绍的类似。</p>
+<p>不过， 因为 Sentinel 执行的工作和普通 Redis 服务器执行的工作不同， 所以 Sentinel 的初始化过程和普通 Redis 服务器的初始化过程并不完全相同。</p>
+<h2 id="使用-Sentinel-专用代码"><a href="#使用-Sentinel-专用代码" class="headerlink" title="使用 Sentinel 专用代码"></a>使用 Sentinel 专用代码</h2><p>比如说， 普通 Redis 服务器使用 redis.h/REDIS_SERVERPORT 常量的值作为服务器端口：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#define REDIS_SERVERPORT 6379</span><br></pre></td></tr></table></figure>
+<p>而 Sentinel 则使用 sentinel.c/REDIS_SENTINEL_PORT 常量的值作为服务器端口：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">#define REDIS_SENTINEL_PORT 26379</span><br></pre></td></tr></table></figure>
+
+<p> Redis 服务器不能执行诸如 SET 、 DBSIZE 、 EVAL 等等这些命令 —— 因为服务器根本没有在命令表中载入这些命令： PING 、 SENTINEL 、 INFO 、 SUBSCRIBE 、 UNSUBSCRIBE 、 PSUBSCRIBE 和 PUNSUBSCRIBE 这七个命令就是客户端可以对 Sentinel 执行的全部命令了。</p>
+<h2 id="初始化Sentinel状态"><a href="#初始化Sentinel状态" class="headerlink" title="初始化Sentinel状态"></a>初始化Sentinel状态</h2><p>在应用了 Sentinel 的专用代码之后， 接下来， 服务器会初始化一个 sentinel.c/sentinelState 结构</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">struct sentinelState &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 当前纪元，用于实现故障转移</span><br><span class="line">    uint64_t current_epoch;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 保存了所有被这个 sentinel 监视的主服务器</span><br><span class="line">    &#x2F;&#x2F; 字典的键是主服务器的名字</span><br><span class="line">    &#x2F;&#x2F; 字典的值则是一个指向 sentinelRedisInstance 结构的指针</span><br><span class="line">    dict *masters;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 是否进入了 TILT 模式？</span><br><span class="line">    int tilt;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 目前正在执行的脚本的数量</span><br><span class="line">    int running_scripts;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 进入 TILT 模式的时间</span><br><span class="line">    mstime_t tilt_start_time;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 最后一次执行时间处理器的时间</span><br><span class="line">    mstime_t previous_time;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 一个 FIFO 队列，包含了所有需要执行的用户脚本</span><br><span class="line">    list *scripts_queue;</span><br><span class="line"></span><br><span class="line">&#125; sentinel;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="初始化-Sentinel-状态的-masters-属性"><a href="#初始化-Sentinel-状态的-masters-属性" class="headerlink" title="初始化 Sentinel 状态的 masters 属性"></a>初始化 Sentinel 状态的 masters 属性</h2><p>Sentinel 状态中的 masters 字典记录了所有被 Sentinel 监视的主服务器的相关信息， 其中：</p>
+<ol>
+<li>字典的键是被监视主服务器的名字。</li>
+<li>而字典的值则是被监视主服务器对应的 sentinel.c/sentinelRedisInstance 结构。</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">typedef struct sentinelRedisInstance &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 标识值，记录了实例的类型，以及该实例的当前状态</span><br><span class="line">    int flags;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 实例的名字</span><br><span class="line">    &#x2F;&#x2F; 主服务器的名字由用户在配置文件中设置</span><br><span class="line">    &#x2F;&#x2F; 从服务器以及 Sentinel 的名字由 Sentinel 自动设置</span><br><span class="line">    &#x2F;&#x2F; 格式为 ip:port ，例如 &quot;127.0.0.1:26379&quot;</span><br><span class="line">    char *name;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 实例的运行 ID</span><br><span class="line">    char *runid;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 配置纪元，用于实现故障转移</span><br><span class="line">    uint64_t config_epoch;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; 实例的地址</span><br><span class="line">    sentinelAddr *addr;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; SENTINEL down-after-milliseconds 选项设定的值</span><br><span class="line">    &#x2F;&#x2F; 实例无响应多少毫秒之后才会被判断为主观下线（subjectively down）</span><br><span class="line">    mstime_t down_after_period;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; SENTINEL monitor &lt;master-name&gt; &lt;IP&gt; &lt;port&gt; &lt;quorum&gt; 选项中的 quorum 参数</span><br><span class="line">    &#x2F;&#x2F; 判断这个实例为客观下线（objectively down）所需的支持投票数量</span><br><span class="line">    int quorum;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; SENTINEL parallel-syncs &lt;master-name&gt; &lt;number&gt; 选项的值</span><br><span class="line">    &#x2F;&#x2F; 在执行故障转移操作时，可以同时对新的主服务器进行同步的从服务器数量</span><br><span class="line">    int parallel_syncs;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; SENTINEL failover-timeout &lt;master-name&gt; &lt;ms&gt; 选项的值</span><br><span class="line">    &#x2F;&#x2F; 刷新故障迁移状态的最大时限</span><br><span class="line">    mstime_t failover_timeout;</span><br><span class="line"></span><br><span class="line">    &#x2F;&#x2F; ...</span><br><span class="line"></span><br><span class="line">&#125; sentinelRedisInstance;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>Sentinel启动时会载入以下内容的配置文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">#####################</span><br><span class="line"># master1 configure #</span><br><span class="line">#####################</span><br><span class="line"></span><br><span class="line">sentinel monitor master1 127.0.0.1 6379 2</span><br><span class="line"></span><br><span class="line">sentinel down-after-milliseconds master1 30000</span><br><span class="line"></span><br><span class="line">sentinel parallel-syncs master1 1</span><br><span class="line"></span><br><span class="line">sentinel failover-timeout master1 900000</span><br><span class="line"></span><br><span class="line">#####################</span><br><span class="line"># master2 configure #</span><br><span class="line">#####################</span><br><span class="line"></span><br><span class="line">sentinel monitor master2 127.0.0.1 12345 5</span><br><span class="line"></span><br><span class="line">sentinel down-after-milliseconds master2 50000</span><br><span class="line"></span><br><span class="line">sentinel parallel-syncs master2 5</span><br><span class="line"></span><br><span class="line">sentinel failover-timeout master2 450000</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/redis/sentinel/master1%E7%9A%84%E5%AE%9E%E4%BE%8B%E7%BB%93%E6%9E%84.png" alt="master1的实例结构"></p>
+<p><img src="/images/redis/sentinel/master2%E7%9A%84%E5%AE%9E%E4%BE%8B%E7%BB%93%E6%9E%84.png" alt="master2的实例结构"></p>
+<p><img src="/images/redis/sentinel/sentinel%E7%8A%B6%E6%80%81%E4%BB%A5%E5%8F%8Amaster%E5%AD%97%E5%85%B8.png" alt="sentinel状态以及master字典"></p>
+<h2 id="创建连向主服务器的网络连接"><a href="#创建连向主服务器的网络连接" class="headerlink" title="创建连向主服务器的网络连接"></a>创建连向主服务器的网络连接</h2><p>对于每个被 Sentinel 监视的主服务器来说， Sentinel 会创建两个连向主服务器的异步网络连接：</p>
+<ol>
+<li>一个是命令连接， 这个连接专门用于向主服务器发送命令， 并接收命令回复。</li>
+<li>另一个是订阅连接， 这个连接专门用于订阅主服务器的 <strong>sentinel</strong>:hello 频道。</li>
+</ol>
+<h1 id="获取主服务器的信息"><a href="#获取主服务器的信息" class="headerlink" title="获取主服务器的信息"></a>获取主服务器的信息</h1><p>Sentinel默认会以每十秒一次的频率,通过命令连接向被监视的<strong>主服务</strong>器发送INFO命令.并通过分析info命令的回复来获取主服务器的当前信息.</p>
+<p><img src="/images/redis/sentinel/info%E5%91%BD%E4%BB%A4%E7%9A%84%E5%9B%9E%E5%A4%8D.png" alt="info命令的回复"></p>
+<p>Sentinel在分析info命令返回的信息中对应的从服务器的实例是否在slave字典中存在而做出相应的操作.</p>
+<p><img src="/images/redis/sentinel/%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%92%8C%E5%AE%83%E7%9A%84%E4%B8%89%E4%B8%AA%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8.png" alt="主服务器和它的三个从服务器"></p>
+<h1 id="获取从服务器信息"><a href="#获取从服务器信息" class="headerlink" title="获取从服务器信息"></a>获取从服务器信息</h1><p>当Sentinel发现主服务器有新的从服务器出现时.Sentinel除了会为这个新的从服务器创建相应的实例结构外,Sentinel还会创建连接到从服务器的命令连接和订阅连接.</p>
+<p><img src="/images/redis/sentinel/sentinel%E4%B8%8E%E5%90%84%E4%B8%AA%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%BB%BA%E7%AB%8B%E5%91%BD%E4%BB%A4%E8%BF%9E%E6%8E%A5%E5%92%8C%E8%AE%A2%E9%98%85%E8%BF%9E%E6%8E%A5.png" alt="sentinel与各个从服务器建立命令连接和订阅连接"></p>
+<p>Sentinel默认会以每十秒一次的频率,通过命令连接向被监视的<strong>从服务</strong>器发送INFO命令.并通过分析info命令的回复来获取主服务器的当前信息.</p>
+<p><img src="/images/redis/sentinel/%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E5%9B%9E%E5%A4%8D.png" alt="从服务器的回复"></p>
+<p><img src="/images/redis/sentinel/%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E5%AE%9E%E4%BE%8B%E7%BB%93%E6%9E%84.png" alt="从服务器的实例结构"></p>
+<h1 id="向主服务器和从服务器发送信息"><a href="#向主服务器和从服务器发送信息" class="headerlink" title="向主服务器和从服务器发送信息"></a>向主服务器和从服务器发送信息</h1><p>默认情况下,Sentinel会以每两秒一次的频率,通过命令连接向所有被监视的主服务器和从服务器发送以下格式命令:</p>
+<p><img src="/images/redis/sentinel/sentinel%E5%8F%91%E9%80%81%E5%91%BD%E4%BB%A4%E7%9A%84%E6%A0%BC%E5%BC%8F.png" alt="sentinel发送命令的格式"></p>
+<h1 id="接收来自主服务器和从服务器的频道信息"><a href="#接收来自主服务器和从服务器的频道信息" class="headerlink" title="接收来自主服务器和从服务器的频道信息"></a>接收来自主服务器和从服务器的频道信息</h1><p>每个Sentinel连接的服务器.Sentinel既会通过命令连接向服务器的<em>Sentinel</em>:hello频道发送信息.又通过订阅连接从服务器的<em>Sentinel</em>:hello频道接收信息.</p>
+<p>对于多个Sentinel来说,一个Sentinel发送的信息会被其它Sentinel接收到,以更新他们对监视服务器的认知.</p>
+<h2 id="更新Sentinels字典"><a href="#更新Sentinels字典" class="headerlink" title="更新Sentinels字典"></a>更新Sentinels字典</h2><p>每个Sentinel实例中的Sentinels字典中保存这其它Sentinel实例的信息.各个Sentinel的ip和port就是该Sentinel字典中的key,而value就是Sentinel的实体结构</p>
+<p>每次接收来自其它实例的信息时,各个实例都会更新其它实例在自己字典中的信息.</p>
+<h2 id="创建连向其它Sentinel的命令连接"><a href="#创建连向其它Sentinel的命令连接" class="headerlink" title="创建连向其它Sentinel的命令连接"></a>创建连向其它Sentinel的命令连接</h2><p>当Sentinel通过频道信息发现一个新的Sentinel时,它不仅会为Sentinel在Sentinels字典中创建相应的实例结构,还会创建一个连向新Sentinel的命令连接.而新的Sentinel也会创建连向这个Sentinel的连接,最终监视同一个服务器的多个Sentinel会形成相互连接的网络</p>
+<p>这样,各个Sentinel会通过其它Sentinel发来的命令交换信息.</p>
+<ul>
+<li>注意 Sentinel之间不会创建订阅连接.</li>
+</ul>
+<h1 id="检测主观下线状态"><a href="#检测主观下线状态" class="headerlink" title="检测主观下线状态"></a>检测主观下线状态</h1><p>默认Sentinel会以每秒一次的频率向所有与它创建了命令连接的实例(主从服务器,其它Sentinel在内)发送ping命令,通过他们的回复来判断他们是否在线.</p>
+<p>Sentinel配置文件中的Down-after-milliseconds选项制定了Sentinel判断实例进入主观下线所需的时间长度.如果在该时间内无回复,则Sentinel会改变这个实例的对应的实例结构,在flags属性中打开SRI_S_Down表示,标志这该实例进入主管下线状态.</p>
+<p>由于多个Sentinel的毫秒数设置的可能不同,所以各个Sentinel主观认为某个实例是否下线时不同的.</p>
+<h1 id="检查客观下线状态"><a href="#检查客观下线状态" class="headerlink" title="检查客观下线状态"></a>检查客观下线状态</h1><p>当Sentinel将一个主服务器判断为主管下线之后,为了确认这个主服务器是否真的下线了,他会向同样监视这个主服务器的Sentinel进行询问.当从其它的Sentinel那接收到足够数量的已下线判断后,Sentinel会将主服务器判定为客观下线,并对主服务器执行故障转移操作</p>
+<h2 id="发送Sentinel-is-master-down-by-addr命令"><a href="#发送Sentinel-is-master-down-by-addr命令" class="headerlink" title="发送Sentinel is-master-down-by-addr命令"></a>发送Sentinel is-master-down-by-addr命令</h2><p>![Sentinel is-master-down-by-addr各个参数的意义](/images/redis/sentinel/Sentinel is-master-down-by-addr各个参数的意义.png)</p>
+<h2 id="接收Sentinel-is-master-down-by-addr命令"><a href="#接收Sentinel-is-master-down-by-addr命令" class="headerlink" title="接收Sentinel is-master-down-by-addr命令"></a>接收Sentinel is-master-down-by-addr命令</h2><p>![Sentinel is-master-down-by-addr回复的意义](/images/redis/sentinel/Sentinel is-master-down-by-addr回复的意义.png)</p>
+<h2 id="接收Sentinel-is-master-down-by-addr的回复"><a href="#接收Sentinel-is-master-down-by-addr的回复" class="headerlink" title="接收Sentinel is-master-down-by-addr的回复"></a>接收Sentinel is-master-down-by-addr的回复</h2><p>根据Sentinel同意主服务器已下线的数量(quorum参数的值),当达到所需的数量,则将主服务器的flags属性的SRI_O_DOWN标示打开,表示主服务器已经进入客观下线状态</p>
+<p>Sentinel monitor master 127.0.0.1 6379 2 包括当前的Sentinel在日,有2个Sentinel觉得主服务器已经下线,则当前Sentinel才会将主服务器判断为客观下线.</p>
+<h1 id="选举领头-Sentinel"><a href="#选举领头-Sentinel" class="headerlink" title="选举领头 Sentinel"></a>选举领头 Sentinel</h1><p>当一个主服务器被判定为客观下线时.监视这个下线主服务器的各个Sentinel会进行协商,选举一个领头Sentinel,并由它对下线主服务器进行故障转移.</p>
+<p>选举领头Sentinel的法则:</p>
+<p><img src="/images/redis/sentinel/%E9%80%89%E4%B8%BE%E9%A2%86%E5%A4%B4Sentinel%E7%9A%84%E6%B3%95%E5%88%991.png" alt="选举领头Sentinel的法则1"></p>
+<p><img src="/images/redis/sentinel/%E9%80%89%E4%B8%BE%E9%A2%86%E5%A4%B4Sentinel%E7%9A%84%E6%B3%95%E5%88%992.png" alt="选举领头Sentinel的法则2"></p>
+<h1 id="故障转移"><a href="#故障转移" class="headerlink" title="故障转移"></a>故障转移</h1><p>领头的Sentinel对已下线的主服务器执行故障转移,操作如下</p>
+<ol>
+<li>在已下线的主服务器属下的所有从服务器里面,选一个从服务器将其转换为主服务器.</li>
+<li>让已下线的服务器属下的所有从服务器改为复制新的主服务器.</li>
+<li>将已下线的主服务器设置为新的主服务器的从服务器,待其上线后,它将成为新的额主服务器的从服务器.</li>
+</ol>
+<h2 id="选出的新的主服务器"><a href="#选出的新的主服务器" class="headerlink" title="选出的新的主服务器"></a>选出的新的主服务器</h2><p>故障转移操作的第一步就是在已下线的主服务器的属下的所有从服务器中,选出一个状态良好.数据完整的从服务器,然后向这个从服务器发送slave no one命令.将它由从服务器变为主服务器.</p>
+<p>主服务的挑选规则:</p>
+<p><img src="/images/redis/sentinel/%E4%B8%BB%E6%9C%8D%E5%8A%A1%E7%9A%84%E6%8C%91%E9%80%89%E8%A7%84%E5%88%99.png" alt="主服务的挑选规则"></p>
+<h2 id="修改从服务器的复制目标"><a href="#修改从服务器的复制目标" class="headerlink" title="修改从服务器的复制目标"></a>修改从服务器的复制目标</h2><p>当新的主服务器出现之后,领头Sentinel下一步做的就是让所有的从服务器去复制新的主服务器.这一动作通过<strong>领头Sentinel</strong>向从服务器发送SLAVEOF命令来实现</p>
+<p><img src="/images/redis/sentinel/%E8%AE%A9%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%A4%8D%E5%88%B6%E6%96%B0%E7%9A%84%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8.png" alt="让从服务器复制新的主服务器"></p>
+<p><img src="/images/redis/sentinel/server3%E5%92%8Cserver4%E6%88%90%E4%B8%BAserver2%E7%9A%84%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8.png" alt="server3和server4成为server2的从服务器"></p>
+<h2 id="让旧的主服务器成为从服务器"><a href="#让旧的主服务器成为从服务器" class="headerlink" title="让旧的主服务器成为从服务器"></a>让旧的主服务器成为从服务器</h2><p>由于旧的主服务器已经下线,所以这种操作时保存在在server1对应的实例结构里面的.当server1重新上线后,Sentinel会向它发送SLAVEOF命令,让server1成为server2的从服务器.</p>
+<p><img src="/images/redis/sentinel/server1%E9%87%8D%E6%96%B0%E4%B8%8A%E7%BA%BF%E6%88%90%E4%B8%BAserver2%E7%9A%84%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8.png" alt="server1重新上线成为server2的从服务器"></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Sentinel-redis/" rel="tag"># Sentinel,redis</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-01-24/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-%E5%A4%8D%E5%88%B6/" rel="prev" title="redis设计与实现-复制">
+      <i class="fa fa-chevron-left"></i> redis设计与实现-复制
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-01-28/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-cluster/" rel="next" title="redis设计与实现-cluster">
+      redis设计与实现-cluster <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E5%B9%B6%E5%88%9D%E5%A7%8B%E5%8C%96Sentinel"><span class="nav-number">1.</span> <span class="nav-text">启动并初始化Sentinel</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="nav-number">1.1.</span> <span class="nav-text">初始化服务器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8-Sentinel-%E4%B8%93%E7%94%A8%E4%BB%A3%E7%A0%81"><span class="nav-number">1.2.</span> <span class="nav-text">使用 Sentinel 专用代码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96Sentinel%E7%8A%B6%E6%80%81"><span class="nav-number">1.3.</span> <span class="nav-text">初始化Sentinel状态</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96-Sentinel-%E7%8A%B6%E6%80%81%E7%9A%84-masters-%E5%B1%9E%E6%80%A7"><span class="nav-number">1.4.</span> <span class="nav-text">初始化 Sentinel 状态的 masters 属性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E8%BF%9E%E5%90%91%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E7%BD%91%E7%BB%9C%E8%BF%9E%E6%8E%A5"><span class="nav-number">1.5.</span> <span class="nav-text">创建连向主服务器的网络连接</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E4%BF%A1%E6%81%AF"><span class="nav-number">2.</span> <span class="nav-text">获取主服务器的信息</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E4%BF%A1%E6%81%AF"><span class="nav-number">3.</span> <span class="nav-text">获取从服务器信息</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%91%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%92%8C%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%8F%91%E9%80%81%E4%BF%A1%E6%81%AF"><span class="nav-number">4.</span> <span class="nav-text">向主服务器和从服务器发送信息</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%8E%A5%E6%94%B6%E6%9D%A5%E8%87%AA%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E5%92%8C%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E9%A2%91%E9%81%93%E4%BF%A1%E6%81%AF"><span class="nav-number">5.</span> <span class="nav-text">接收来自主服务器和从服务器的频道信息</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%B4%E6%96%B0Sentinels%E5%AD%97%E5%85%B8"><span class="nav-number">5.1.</span> <span class="nav-text">更新Sentinels字典</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E8%BF%9E%E5%90%91%E5%85%B6%E5%AE%83Sentinel%E7%9A%84%E5%91%BD%E4%BB%A4%E8%BF%9E%E6%8E%A5"><span class="nav-number">5.2.</span> <span class="nav-text">创建连向其它Sentinel的命令连接</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A3%80%E6%B5%8B%E4%B8%BB%E8%A7%82%E4%B8%8B%E7%BA%BF%E7%8A%B6%E6%80%81"><span class="nav-number">6.</span> <span class="nav-text">检测主观下线状态</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A3%80%E6%9F%A5%E5%AE%A2%E8%A7%82%E4%B8%8B%E7%BA%BF%E7%8A%B6%E6%80%81"><span class="nav-number">7.</span> <span class="nav-text">检查客观下线状态</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%91%E9%80%81Sentinel-is-master-down-by-addr%E5%91%BD%E4%BB%A4"><span class="nav-number">7.1.</span> <span class="nav-text">发送Sentinel is-master-down-by-addr命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A5%E6%94%B6Sentinel-is-master-down-by-addr%E5%91%BD%E4%BB%A4"><span class="nav-number">7.2.</span> <span class="nav-text">接收Sentinel is-master-down-by-addr命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A5%E6%94%B6Sentinel-is-master-down-by-addr%E7%9A%84%E5%9B%9E%E5%A4%8D"><span class="nav-number">7.3.</span> <span class="nav-text">接收Sentinel is-master-down-by-addr的回复</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%80%89%E4%B8%BE%E9%A2%86%E5%A4%B4-Sentinel"><span class="nav-number">8.</span> <span class="nav-text">选举领头 Sentinel</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%85%E9%9A%9C%E8%BD%AC%E7%A7%BB"><span class="nav-number">9.</span> <span class="nav-text">故障转移</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%80%89%E5%87%BA%E7%9A%84%E6%96%B0%E7%9A%84%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="nav-number">9.1.</span> <span class="nav-text">选出的新的主服务器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84%E5%A4%8D%E5%88%B6%E7%9B%AE%E6%A0%87"><span class="nav-number">9.2.</span> <span class="nav-text">修改从服务器的复制目标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A9%E6%97%A7%E7%9A%84%E4%B8%BB%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%88%90%E4%B8%BA%E4%BB%8E%E6%9C%8D%E5%8A%A1%E5%99%A8"><span class="nav-number">9.3.</span> <span class="nav-text">让旧的主服务器成为从服务器</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="陈伟杰"
+      src="/images/favicon.ico">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/chenwj1103" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;chenwj1103" rel="noopener" target="_blank"><i class="github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

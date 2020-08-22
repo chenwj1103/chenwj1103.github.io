@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="二叉搜索树对于某个节点而言，其左子树的节点的关键值都小于该节点的关键值，右子树的所有节点的关键值都大于该节点的关键值。二叉搜索树作为一种数据结构， 增删改查的时间复杂度都是log以2为底n的对数，但是这个复杂度都是爱平衡的二叉搜索树上提现的，也就是如果插入的数据是随机的，则效率很高，但是如果是有序的从下到大的则，树为全部在右边。  从小到大的都在右边，则这链表没有区别了。时间复杂度是o(n)。所示">
+<meta property="og:type" content="article">
+<meta property="og:title" content="java数据结构和算法11-红黑树">
+<meta property="og:url" content="http://www.chenwj.cn/2019-04-09/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9511-%E7%BA%A2%E9%BB%91%E6%A0%91/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="二叉搜索树对于某个节点而言，其左子树的节点的关键值都小于该节点的关键值，右子树的所有节点的关键值都大于该节点的关键值。二叉搜索树作为一种数据结构， 增删改查的时间复杂度都是log以2为底n的对数，但是这个复杂度都是爱平衡的二叉搜索树上提现的，也就是如果插入的数据是随机的，则效率很高，但是如果是有序的从下到大的则，树为全部在右边。  从小到大的都在右边，则这链表没有区别了。时间复杂度是o(n)。所示">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://www.chenwj.cn/images/datastructure/%E5%81%8F%E5%90%91%E7%9A%84%E6%A0%91.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/datastructure/%E6%94%B9%E5%8F%98%E8%8A%82%E7%82%B9%E9%A2%9C%E8%89%B2.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/datastructure/%E5%8F%B3%E6%97%8B.png">
+<meta property="og:image" content="http://www.chenwj.cn/images/datastructure/%E5%B7%A6%E6%97%8B.png">
+<meta property="article:published_time" content="2019-04-09T15:36:35.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.821Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="红黑树">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://www.chenwj.cn/images/datastructure/%E5%81%8F%E5%90%91%E7%9A%84%E6%A0%91.png">
+
+<link rel="canonical" href="http://www.chenwj.cn/2019-04-09/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9511-%E7%BA%A2%E9%BB%91%E6%A0%91/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>java数据结构和算法11-红黑树 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="茄子的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">68</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">26</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">75</span></a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2019-04-09/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9511-%E7%BA%A2%E9%BB%91%E6%A0%91/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/favicon.ico">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          java数据结构和算法11-红黑树
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2019-04-09 23:36:35" itemprop="dateCreated datePublished" datetime="2019-04-09T23:36:35+08:00">2019-04-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95/" itemprop="url" rel="index"><span itemprop="name">数据结构和算法</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>5k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>5 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>二叉搜索树对于某个节点而言，其左子树的节点的关键值都小于该节点的关键值，右子树的所有节点的关键值都大于该节点的关键值。二叉搜索树作为一种数据结构，</p>
+<p>增删改查的时间复杂度都是log以2为底n的对数，但是这个复杂度都是爱平衡的二叉搜索树上提现的，也就是如果插入的数据是随机的，则效率很高，但是如果是有序的从下到大的则，树为全部在右边。</p>
+<p><img src="/images/datastructure/%E5%81%8F%E5%90%91%E7%9A%84%E6%A0%91.png" alt="偏向的树"></p>
+<p>从小到大的都在右边，则这链表没有区别了。时间复杂度是o(n)。所示时间复杂度是在log以2为底n的对数和o(n)</p>
+<h1 id="红黑树"><a href="#红黑树" class="headerlink" title="红黑树"></a>红黑树</h1><p>那么为了能够以较快的时间O(logN)来搜索一棵树，我们需要保证树总是平衡的（或者大部分是平衡的），也就是说每个节点的左子树节点个数和右子树节点个数尽量相等。红-黑树的就是这样的一棵平衡树</p>
+<p>对一个要插入的数据项（删除也是），插入例程要检查会不会破坏树的特征，如果破坏了，程序就会进行纠正，根据需要改变树的结构，从而保持树的平衡。</p>
+<h2 id="红黑树的特征"><a href="#红黑树的特征" class="headerlink" title="红黑树的特征"></a>红黑树的特征</h2><p>有两个特征</p>
+<ol>
+<li>节点都有颜色；</li>
+<li>在插入和删除的过程中，要遵循保持这些颜色的不同排列规则；</li>
+</ol>
+<p>第一个很好理解，在红-黑树中，每个节点的颜色或者是黑色或者是红色的。当然也可以是任意别的两种颜色，这里的颜色用于标记，我们可以在节点类Node中增加一个boolean型变量isRed，以此来表示颜色的信息。</p>
+<p>第二点，在插入或者删除一个节点时，必须要遵守的规则称为红-黑规则：<br>1.每个节点不是红色就是黑色的；<br>2.根节点总是黑色的；<br>3.如果节点是红色的，则它的子节点必须是黑色的（反之不一定）,(也就是从每个叶子到根的所有路径上不能有两个连续的红色节点)；<br>4.从根节点到叶节点或空子节点的每条路径，必须包含相同数目的黑色节点（即相同的黑色高度）。</p>
+<p>新插入的节点颜色总是红色的，</p>
+<p>这是因为插入一个红色节点比插入一个黑色节点违背红-黑规则的可能性更小，原因是插入黑色节点总会改变黑色高度（违背规则4），但是插入红色节点只有一半的机会会违背规则3（因为父节点是黑色的没事，父节点是红色的就违背规则3）。</p>
+<p>另外违背规则3比违背规则4要更容易修正。当插入一个新的节点时，可能会破坏这种平衡性，那么红-黑树是如何修正的呢？</p>
+<h2 id="红黑树的自我修正"><a href="#红黑树的自我修正" class="headerlink" title="红黑树的自我修正"></a>红黑树的自我修正</h2><p>红-黑树主要通过三种方式对平衡进行修正，改变节点颜色、左旋和右旋。</p>
+<h3 id="改变节点颜色"><a href="#改变节点颜色" class="headerlink" title="改变节点颜色"></a>改变节点颜色</h3><p>新插入的节点为15，一般新插入颜色都为红色，那么我们发现直接插入会违反规则3，改为黑色却发现违反规则4。这时候我们将其父节点颜色改为黑色，父节点的兄弟节点颜色也改为黑色。通常其祖父节点50颜色会由黑色变为红色，但是由于50是根节点，所以我们这里不能改变根节点颜色。</p>
+<p><img src="/images/datastructure/%E6%94%B9%E5%8F%98%E8%8A%82%E7%82%B9%E9%A2%9C%E8%89%B2.png" alt="改变节点颜色"></p>
+<h3 id="右旋"><a href="#右旋" class="headerlink" title="右旋"></a>右旋</h3><p>首先要说明的是节点本身是不会旋转的，旋转改变的是节点之间的关系，选择一个节点作为旋转的顶端，如果做一次右旋，这个顶端节点会向下和向右移动到它右子节点的位置，它的左子节点会上移到它原来的位置。右旋的顶端节点必须要有左子节点。</p>
+<p><img src="/images/datastructure/%E5%8F%B3%E6%97%8B.png" alt="右旋"></p>
+<h3 id="左旋"><a href="#左旋" class="headerlink" title="左旋"></a>左旋</h3><p>左旋的顶端节点必须要有右子节点。</p>
+<p><img src="/images/datastructure/%E5%B7%A6%E6%97%8B.png" alt="左旋"></p>
+<p>我们改变颜色也是为了帮助我们判断何时执行什么旋转，而旋转是为了保证树的平衡。光改变节点颜色是不能起到任何作用的，旋转才是关键的操作，在新增节点或者删除节点之后，可能会破坏二叉树的平衡，那么何时执行旋转以及执行什么旋转，这是我们需要重点关注的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br></pre></td><td class="code"><pre><span class="line">package com.chen.algorithm.tree.rbtree;</span><br><span class="line"></span><br><span class="line">&#x2F;**</span><br><span class="line"> * 红黑树节点类</span><br><span class="line"> * &lt;p&gt;</span><br><span class="line"> * 节点类和二叉树的节点类差不多，只不过在其基础上增加了一个 boolean 类型的变量来表示节点的颜色</span><br><span class="line"> *</span><br><span class="line"> * @author :  chen weijie</span><br><span class="line"> * @Date: 2019-04-10 12:18 AM</span><br><span class="line"> *&#x2F;</span><br><span class="line">public class RBNode&lt;T extends Comparable&lt;T&gt;&gt; &#123;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 颜色</span><br><span class="line">     *&#x2F;</span><br><span class="line">    boolean color;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 关键值</span><br><span class="line">     *&#x2F;</span><br><span class="line">    T key;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 左子节点</span><br><span class="line">     *&#x2F;</span><br><span class="line">    RBNode&lt;T&gt; left;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 右子节点</span><br><span class="line">     *&#x2F;</span><br><span class="line">    RBNode&lt;T&gt; right;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 父节点</span><br><span class="line">     *&#x2F;</span><br><span class="line">    RBNode&lt;T&gt; parent;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    RBNode&lt;T&gt; root;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    public RBNode(boolean color, T key, RBNode&lt;T&gt; left, RBNode&lt;T&gt; right, RBNode&lt;T&gt; parent) &#123;</span><br><span class="line">        this.color &#x3D; color;</span><br><span class="line">        this.key &#x3D; key;</span><br><span class="line">        this.left &#x3D; left;</span><br><span class="line">        this.right &#x3D; right;</span><br><span class="line">        this.parent &#x3D; parent;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 获取节点的关键值</span><br><span class="line">     *</span><br><span class="line">     * @return</span><br><span class="line">     *&#x2F;</span><br><span class="line">    public T getKey() &#123;</span><br><span class="line">        return key;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 打印节点的关键值和颜色信息</span><br><span class="line">     *&#x2F;</span><br><span class="line">    @Override</span><br><span class="line">    public String toString() &#123;</span><br><span class="line">        return &quot;&quot; + key + (this.color ? &quot;R&quot; : &quot;B&quot;);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;*************对红黑树节点x进行左旋操作 ******************&#x2F;</span><br><span class="line"></span><br><span class="line">    &#x2F;***</span><br><span class="line">     *</span><br><span class="line">     * 左旋示意图：对节点x进行左旋</span><br><span class="line">     *     p                       p</span><br><span class="line">     *    &#x2F;                       &#x2F;</span><br><span class="line">     *   x                       y</span><br><span class="line">     *  &#x2F; \                     &#x2F; \</span><br><span class="line">     * lx  y      -----&gt;       x  ry</span><br><span class="line">     *    &#x2F; \                 &#x2F; \</span><br><span class="line">     *   ly ry               lx ly</span><br><span class="line">     *</span><br><span class="line">     * 左旋做了三件事：</span><br><span class="line">     * 1. 将y的左子节点赋给x的右子节点,并将x赋给y左子节点的父节点(y左子节点非空时)</span><br><span class="line">     * 2. 将x的父节点p(非空时)赋给y的父节点，同时更新p的子节点为y(左或右)</span><br><span class="line">     * 3. 将y的左子节点设为x，将x的父节点设为y</span><br><span class="line">     *&#x2F;</span><br><span class="line">    private void leftRotate(RBNode&lt;T&gt; x) &#123;</span><br><span class="line">        &#x2F;&#x2F;1. 将y的左子节点赋给x的右子节点，并将x赋给y左子节点的父节点(y左子节点非空时)</span><br><span class="line">        RBNode&lt;T&gt; y &#x3D; x.right;</span><br><span class="line"></span><br><span class="line">        x.right &#x3D; y.left;</span><br><span class="line">        if (y.left !&#x3D; null) &#123;</span><br><span class="line">            y.left.parent &#x3D; x;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F;2. 将x的父节点p(非空时)赋给y的父节点，同时更新p的子节点为y(左或右)</span><br><span class="line">        y.parent &#x3D; x.parent;</span><br><span class="line">        if (x.parent &#x3D;&#x3D; null) &#123;</span><br><span class="line">            this.root &#x3D; y;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            if (x &#x3D;&#x3D; x.parent.left) &#123;</span><br><span class="line">                x.parent.left &#x3D; y;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                x.parent.right &#x3D; y;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F; 3. 将y的左子节点设为x，将x的父节点设为y</span><br><span class="line">        y.left &#x3D; x;</span><br><span class="line">        x.parent &#x3D; y;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    &#x2F;*************对红黑树节点y进行右旋操作 ******************&#x2F;</span><br><span class="line">    &#x2F;**</span><br><span class="line">     * 左旋示意图：对节点y进行右旋</span><br><span class="line">     * p                   p</span><br><span class="line">     * &#x2F;                   &#x2F;</span><br><span class="line">     * y                   x</span><br><span class="line">     * &#x2F; \                 &#x2F; \</span><br><span class="line">     * x  ry   -----&gt;      lx  y</span><br><span class="line">     * &#x2F; \                     &#x2F; \</span><br><span class="line">     * lx  rx                   rx ry</span><br><span class="line">     * 右旋做了三件事：</span><br><span class="line">     * 1. 将x的右子节点赋给y的左子节点,并将y赋给x右子节点的父节点(x右子节点非空时)</span><br><span class="line">     * 2. 将y的父节点p(非空时)赋给x的父节点，同时更新p的子节点为x(左或右)</span><br><span class="line">     * 3. 将x的右子节点设为y，将y的父节点设为x</span><br><span class="line">     *&#x2F;</span><br><span class="line">    private void rightRotate(RBNode&lt;T&gt; y) &#123;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F;1. 将y的左子节点赋给x的右子节点，并将y赋给x右子节点的父节点(x右子节点非空时)</span><br><span class="line">        RBNode&lt;T&gt; x &#x3D; y.left;</span><br><span class="line">        y.left &#x3D; x.right;</span><br><span class="line">        if (x.right !&#x3D; null) &#123;</span><br><span class="line">            x.right.parent &#x3D; y;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F;2. 将x的父节点p(非空时)赋给y的父节点，同时更新p的子节点为y(左或右)</span><br><span class="line">        x.parent &#x3D; y.parent;</span><br><span class="line"></span><br><span class="line">        if (y.parent &#x3D;&#x3D; null) &#123;</span><br><span class="line">            &#x2F;&#x2F;如果y的父节点为空(即y为根节点)，则旋转后将x设为根节点</span><br><span class="line">            this.root &#x3D; x;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            if (y &#x3D;&#x3D; y.parent.left) &#123;</span><br><span class="line">                &#x2F;&#x2F;则将x也设置为左子节点</span><br><span class="line">                y.parent.left &#x3D; x;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                &#x2F;&#x2F;否则将x设置为右子节点</span><br><span class="line">                y.parent.right &#x3D; x;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        &#x2F;&#x2F;3. 将x的左子节点设为y，将y的父节点设为y</span><br><span class="line">        x.right &#x3D; y;</span><br><span class="line">        y.parent &#x3D; x;</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="插入操作"><a href="#插入操作" class="headerlink" title="插入操作"></a>插入操作</h3><p>这与二叉搜索树中实现的思路一样，这里不再赘述，主要看看方法里面最后一步insertFixUp(node)操作。因为插入后可能会导致树的不平衡，insertFixUp(node) 方法里主要是分情况讨论，分析何时变色，何时左旋，何时右旋。我们先从理论上分析具体的情况，然后再看insertFixUp(node) 的具体实现。</p>
+<p>　　如果是第一次插入，由于原树为空，所以只会违反红-黑树的规则2，所以只要把根节点涂黑即可；如果插入节点的父节点是黑色的，那不会违背红-黑树的规则，什么也不需要做；但是遇到如下三种情况，我们就要开始变色和旋转了：</p>
+<p>　　①、插入节点的父节点和其叔叔节点（祖父节点的另一个子节点）均为红色。</p>
+<p>　　②、插入节点的父节点是红色的，叔叔节点是黑色的，且插入节点是其父节点的右子节点。</p>
+<p>　　③、插入节点的父节点是红色的，叔叔节点是黑色的，且插入节点是其父节点的左子节点。</p>
+<p>　　下面我们挨个分析这三种情况都需要如何操作，然后给出实现代码。</p>
+<p>　　在下面的讨论中，使用N,P,G,U表示关联的节点。N(now)表示当前节点，P(parent)表示N的父节点，U(uncle)表示N的叔叔节点，G(grandfather)表示N的祖父节点，也就是P和U的父节点。</p>
+<p>由于插入过程和删除过程比较复杂就不做分析。。。</p>
+<h3 id="红黑树的效率"><a href="#红黑树的效率" class="headerlink" title="红黑树的效率"></a>红黑树的效率</h3><p>红黑树的查找、插入和删除时间复杂度都为O(log2N)，额外的开销是每个节点的存储空间都稍微增加了一点，因为一个存储红黑树节点的颜色变量。插入和删除的时间要增加一个常数因子，因为要进行旋转，平均一次插入大约需要一次旋转，因此插入的时间复杂度还是O(log2N),(时间复杂度的计算要省略常数)，但实际上比普通的二叉树是要慢的。</p>
+<p>大多数应用中，查找的次数比插入和删除的次数多，所以应用红黑树取代普通的二叉搜索树总体上不会有太多的时间开销。而且红黑树的优点是对于有序数据的操作不会慢到O(N)的时间复杂度。</p>
+<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/ysocean/p/8004211.html">参考</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E7%BA%A2%E9%BB%91%E6%A0%91/" rel="tag"># 红黑树</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2019-03-26/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%9510-%E6%A0%91/" rel="prev" title="java数据结构和算法10-树">
+      <i class="fa fa-chevron-left"></i> java数据结构和算法10-树
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2019-04-14/java%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%92%8C%E7%AE%97%E6%B3%95-hash%E8%A1%A8/" rel="next" title="java数据结构和算法-hash表">
+      java数据结构和算法-hash表 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BA%A2%E9%BB%91%E6%A0%91"><span class="nav-number">1.</span> <span class="nav-text">红黑树</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%A2%E9%BB%91%E6%A0%91%E7%9A%84%E7%89%B9%E5%BE%81"><span class="nav-number">1.1.</span> <span class="nav-text">红黑树的特征</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%A2%E9%BB%91%E6%A0%91%E7%9A%84%E8%87%AA%E6%88%91%E4%BF%AE%E6%AD%A3"><span class="nav-number">1.2.</span> <span class="nav-text">红黑树的自我修正</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%94%B9%E5%8F%98%E8%8A%82%E7%82%B9%E9%A2%9C%E8%89%B2"><span class="nav-number">1.2.1.</span> <span class="nav-text">改变节点颜色</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%B3%E6%97%8B"><span class="nav-number">1.2.2.</span> <span class="nav-text">右旋</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%A6%E6%97%8B"><span class="nav-number">1.2.3.</span> <span class="nav-text">左旋</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8F%92%E5%85%A5%E6%93%8D%E4%BD%9C"><span class="nav-number">1.2.4.</span> <span class="nav-text">插入操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BA%A2%E9%BB%91%E6%A0%91%E7%9A%84%E6%95%88%E7%8E%87"><span class="nav-number">1.2.5.</span> <span class="nav-text">红黑树的效率</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="陈伟杰"
+      src="/images/favicon.ico">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/chenwj1103" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;chenwj1103" rel="noopener" target="_blank"><i class="github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

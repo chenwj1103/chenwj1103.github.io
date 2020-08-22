@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="最近学习了redis设计与实现这本书.这本书中主要讲述是理论知识,所以最近首先整理一下关于redis的集群的知识.然后学习redis实战这本书,实战一下. 关于redis clusterredis cluster在设计的时候，就考虑到了去中心化，去中间件，也就是说，集群中的每个节点都是平等的关系，都是对等的，每个节点都保存各自的数据和整个集群的状态。每个节点都和其他所有节点连接，而且这些连接保持活">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis集群-cluster">
+<meta property="og:url" content="http://www.chenwj.cn/2018-02-05/redis%E9%9B%86%E7%BE%A4-cluster/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="最近学习了redis设计与实现这本书.这本书中主要讲述是理论知识,所以最近首先整理一下关于redis的集群的知识.然后学习redis实战这本书,实战一下. 关于redis clusterredis cluster在设计的时候，就考虑到了去中心化，去中间件，也就是说，集群中的每个节点都是平等的关系，都是对等的，每个节点都保存各自的数据和整个集群的状态。每个节点都和其他所有节点连接，而且这些连接保持活">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-02-04T16:20:33.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.834Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="redis cluster">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://www.chenwj.cn/2018-02-05/redis%E9%9B%86%E7%BE%A4-cluster/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>redis集群-cluster | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="茄子的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">68</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">26</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">75</span></a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2018-02-05/redis%E9%9B%86%E7%BE%A4-cluster/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/favicon.ico">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          redis集群-cluster
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-02-05 00:20:33" itemprop="dateCreated datePublished" datetime="2018-02-05T00:20:33+08:00">2018-02-05</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/redis/" itemprop="url" rel="index"><span itemprop="name">redis</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>49k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>45 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>最近学习了redis设计与实现这本书.这本书中主要讲述是理论知识,所以最近首先整理一下关于redis的集群的知识.然后学习redis实战这本书,实战一下.</p>
+<h1 id="关于redis-cluster"><a href="#关于redis-cluster" class="headerlink" title="关于redis cluster"></a>关于redis cluster</h1><p>redis cluster在设计的时候，就考虑到了去中心化，去中间件，也就是说，集群中的每个节点都是平等的关系，都是对等的，每个节点都保存各自的数据和整个集群的状态。每个节点都和其他所有节点连接，而且这些连接保持活跃，这样就保证了我们只需要连接集群中的任意一个节点，就可以获取到其他节点的数据。</p>
+<p>Redis 集群<strong>没有使用传统的一致性哈希</strong>来分配数据，而是采用另外一种叫做<strong>哈希槽</strong> (hash slot)的方式来分配的。redis cluster 默认分配了 16384 个slot，当我们set一个key 时，会用CRC16算法来取模得到所属的slot，然后将这个key 分到哈希槽区间的节点上，具体算法就是：CRC16(key) % 16384。</p>
+<h1 id="Redis-Cluster主从模式"><a href="#Redis-Cluster主从模式" class="headerlink" title="Redis Cluster主从模式"></a>Redis Cluster主从模式</h1><p>redis cluster 为了保证数据的高可用性，加入了主从模式，一个主节点对应一个或多个从节点，主节点提供数据存取，从节点则是从主节点拉取数据备份，当这个主节点挂掉后，就会有这个从节点选取一个来充当主节点，从而保证集群不会挂掉。</p>
+<ul>
+<li>例子</li>
+</ul>
+<p>集群有ABC三个主节点, 如果这3个节点都没有加入从节点，如果B挂掉了，我们就无法访问整个集群了。A和C的slot也无法访问。所以我们在集群建立的时候，一定要为每个主节点都添加了从节点,比如像这样, 集群包含主节点A、B、C, 以及从节点A1、B1、C1, 那么即使B挂掉系统也可以继续正确工作。B1节点替代了B节点，所以Redis集群将会选择B1节点作为新的主节点，集群将会继续正确地提供服务。当B重新开启后，它就会变成B1的从节点。不过需要注意，如果节点B和B1同时挂了，Redis集群就无法继续正确地提供服务了。</p>
+<p>更多关于redisCluster的知识访问我的博文 <a target="_blank" rel="noopener" href="http://chenwj.cn/2018-01-28/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-cluster/">redisCluster</a></p>
+<h1 id="实战"><a href="#实战" class="headerlink" title="实战"></a>实战</h1><p>按照<a target="_blank" rel="noopener" href="http://redis.io/topics/cluster-tutorial">官方cluster文档</a>进行实战 </p>
+<h2 id="创建并使用集群"><a href="#创建并使用集群" class="headerlink" title="创建并使用集群"></a>创建并使用集群</h2><p>Redis 集群由多个运行在集群模式（cluster mode）下的 Redis 实例组成， 实例的集群模式需要通过配置来开启， 开启集群模式的实例将可以使用集群特有的功能和命令。</p>
+<p>以下是一个包含了最少选项的集群配置文件示例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">port 7000    &#x2F;&#x2F;端口号</span><br><span class="line">cluster-enabled yes   &#x2F;&#x2F;开启集群模式</span><br><span class="line">cluster-config-file nodes.conf   &#x2F;&#x2F;集群的配置文件</span><br><span class="line">cluster-node-timeout 5000   &#x2F;&#x2F;认定节点下线的时间</span><br><span class="line">appendonly yes   &#x2F;&#x2F;开启aof持久化</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>官方建议三主三从来搭建集群(本集群采用3.2.11版本)</p>
+<p>首先下载redis的源码 地址<a target="_blank" rel="noopener" href="http://download.redis.io/releases/redis-3.2.11.tar.gz">redis-3.2.11</a></p>
+<ul>
+<li>下载源码 修改文件权限<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget http:&#x2F;&#x2F;download.redis.io&#x2F;releases&#x2F;redis-3.2.11.tar.gz</span><br><span class="line">sudo chmod  753 redis-3.2.11.tar.gz </span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>创建集群文件夹  解压redis源码 进入redis集群文件夹下的redis-3.2.11</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo mkdir &#x2F;usr&#x2F;local&#x2F;redisCluster</span><br><span class="line">sudo tar -zxvf redis-3.2.11.tar.gz -C &#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;</span><br><span class="line">cd &#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;redis-3.2.11&#x2F;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>安装(该操作需要linux系统有c环境,如果报错请自行查阅资料安装) 以上操作后在src文件夹下会生成可执行文件 redis-server和redis-cli等,如果出现编译问题,请切换到root用户下操作</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo make&amp;&amp;make install</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>然后修改配置文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">sudo vim redis.conf</span><br><span class="line"></span><br><span class="line">如下</span><br><span class="line"></span><br><span class="line">port 7000    &#x2F;&#x2F;端口号</span><br><span class="line">cluster-enabled yes   &#x2F;&#x2F;开启集群模式</span><br><span class="line">cluster-config-file nodes.conf   &#x2F;&#x2F;集群的配置文件</span><br><span class="line">cluster-node-timeout 5000   &#x2F;&#x2F;认定节点下线的时间</span><br><span class="line">appendonly yes   &#x2F;&#x2F;开启aof持久化</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>让我们进入一个新目录， 并创建六个以端口号为名字的子目录， 稍后我们在将每个目录中运行一个 Redis 实例</p>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">cd ..</span><br><span class="line">sudo mkdir 7000 7001 7002 7003 7004 7005 </span><br><span class="line"></span><br><span class="line">&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo cp -r redis-3.2.11&#x2F;*  7000&#x2F;</span><br><span class="line">&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo cp -r redis-3.2.11&#x2F;*  7001&#x2F;</span><br><span class="line">&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo cp -r redis-3.2.11&#x2F;*  7002&#x2F;</span><br><span class="line">&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo cp -r redis-3.2.11&#x2F;*  7003&#x2F;</span><br><span class="line">&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo cp -r redis-3.2.11&#x2F;*  7004&#x2F;</span><br><span class="line">&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo cp -r redis-3.2.11&#x2F;*  7005&#x2F;</span><br><span class="line"></span><br><span class="line">现在只需修改每个配置文件下的port参数就行    </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>然后进入每个端口号命名的文件夹下运行以下命令</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">sudo .&#x2F;src&#x2F;redis-server redis.conf &amp;</span><br><span class="line"></span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ ps -ef|grep redis</span><br><span class="line">root      4700  3041  0 00:56 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4701  4700  0 00:56 pts&#x2F;4    00:00:00 .&#x2F;src&#x2F;redis-server 127.0.0.1:7003 [cluster]</span><br><span class="line">root      4721  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4722  4721  0 00:57 pts&#x2F;4    00:00:00 .&#x2F;src&#x2F;redis-server 127.0.0.1:7000 [cluster]</span><br><span class="line">root      4740  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4741  4740  0 00:57 pts&#x2F;4    00:00:00 .&#x2F;src&#x2F;redis-server 127.0.0.1:7001 [cluster]</span><br><span class="line">root      4755  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4756  4755  0 00:57 pts&#x2F;4    00:00:00 .&#x2F;src&#x2F;redis-server 127.0.0.1:7002 [cluster]</span><br><span class="line">root      4771  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4772  4771  0 00:57 pts&#x2F;4    00:00:00 .&#x2F;src&#x2F;redis-server 127.0.0.1:7004 [cluster]</span><br><span class="line">root      4789  3041  0 00:58 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4790  4789  0 00:58 pts&#x2F;4    00:00:00 .&#x2F;src&#x2F;redis-server 127.0.0.1:7005 [cluster]</span><br><span class="line">zhuning+  4794  3041  0 00:58 pts&#x2F;4    00:00:00 grep --color&#x3D;auto redis</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<ul>
+<li>使用 Redis 集群命令行工具 redis-trib ， 编写节点配置文件的工作可以非常容易地完成</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ sudo .&#x2F;src&#x2F;redis-trib.rb create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005 </span><br><span class="line">&gt;&gt;&gt; Creating cluster</span><br><span class="line">&gt;&gt;&gt; Performing hash slots allocation on 6 nodes...</span><br><span class="line">Using 3 masters:</span><br><span class="line">127.0.0.1:7000</span><br><span class="line">127.0.0.1:7001</span><br><span class="line">127.0.0.1:7002</span><br><span class="line">Adding replica 127.0.0.1:7003 to 127.0.0.1:7000</span><br><span class="line">Adding replica 127.0.0.1:7004 to 127.0.0.1:7001</span><br><span class="line">Adding replica 127.0.0.1:7005 to 127.0.0.1:7002</span><br><span class="line">M: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots:0-5460 (5461 slots) master</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:5461-10922 (5462 slots) master</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:10923-16383 (5461 slots) master</span><br><span class="line">S: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   replicates a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">Can I set the above configuration? (type &#39;yes&#39; to accept): </span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>其中–replicas 1表示每个主节点创建一个从节点,该命令自动为各个主节点分配槽位.m表示主节点,s表示从节点;</p>
+<p>yes确认</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br></pre></td><td class="code"><pre><span class="line">Can I set the above configuration? (type &#39;yes&#39; to accept): yes</span><br><span class="line">&gt;&gt;&gt; Nodes configuration updated</span><br><span class="line">&gt;&gt;&gt; Assign a different config epoch to each node</span><br><span class="line">4722:M 06 Feb 01:04:46.722 # configEpoch set to 1 via CLUSTER SET-CONFIG-EPOCH</span><br><span class="line">4741:M 06 Feb 01:04:46.722 # configEpoch set to 2 via CLUSTER SET-CONFIG-EPOCH</span><br><span class="line">4756:M 06 Feb 01:04:46.723 # configEpoch set to 3 via CLUSTER SET-CONFIG-EPOCH</span><br><span class="line">4701:M 06 Feb 01:04:46.723 # configEpoch set to 4 via CLUSTER SET-CONFIG-EPOCH</span><br><span class="line">4772:M 06 Feb 01:04:46.724 # configEpoch set to 5 via CLUSTER SET-CONFIG-EPOCH</span><br><span class="line">4790:M 06 Feb 01:04:46.724 # configEpoch set to 6 via CLUSTER SET-CONFIG-EPOCH</span><br><span class="line">&gt;&gt;&gt; Sending CLUSTER MEET messages to join the cluster</span><br><span class="line">4722:M 06 Feb 01:04:46.747 # IP address for this node updated to 127.0.0.1</span><br><span class="line">4741:M 06 Feb 01:04:46.801 # IP address for this node updated to 127.0.0.1</span><br><span class="line">4790:M 06 Feb 01:04:46.801 # IP address for this node updated to 127.0.0.1</span><br><span class="line">4701:M 06 Feb 01:04:46.801 # IP address for this node updated to 127.0.0.1</span><br><span class="line">4756:M 06 Feb 01:04:46.802 # IP address for this node updated to 127.0.0.1</span><br><span class="line">4772:M 06 Feb 01:04:46.802 # IP address for this node updated to 127.0.0.1</span><br><span class="line">Waiting for the cluster to join...</span><br><span class="line">4701:S 06 Feb 01:04:50.766 # Cluster state changed: ok</span><br><span class="line">4772:S 06 Feb 01:04:50.768 # Cluster state changed: ok</span><br><span class="line">4790:S 06 Feb 01:04:50.769 # Cluster state changed: ok</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7000)</span><br><span class="line">M: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots:0-5460 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">S: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:10923-16383 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:5461-10922 (5462 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ 4701:S 06 Feb 01:04:51.318 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:04:51.318 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:04:51.318 * Non blocking connect for SYNC fired the event.</span><br><span class="line">4701:S 06 Feb 01:04:51.318 * Master replied to PING, replication can continue...</span><br><span class="line">4701:S 06 Feb 01:04:51.319 * Partial resynchronization not possible (no cached master)</span><br><span class="line">4722:M 06 Feb 01:04:51.319 * Slave 127.0.0.1:7003 asks for synchronization</span><br><span class="line">4722:M 06 Feb 01:04:51.319 * Full resync requested by slave 127.0.0.1:7003</span><br><span class="line">4722:M 06 Feb 01:04:51.319 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">4722:M 06 Feb 01:04:51.320 * Background saving started by pid 5685</span><br><span class="line">4701:S 06 Feb 01:04:51.321 * Full resync from master: 4e9540a7b3c5c6caeb88fd51d09a1ecfc067fd5b:1</span><br><span class="line">5685:C 06 Feb 01:04:51.348 * DB saved on disk</span><br><span class="line">5685:C 06 Feb 01:04:51.350 * RDB: 6 MB of memory used by copy-on-write</span><br><span class="line">4722:M 06 Feb 01:04:51.426 * Background saving terminated with success</span><br><span class="line">4722:M 06 Feb 01:04:51.426 * Synchronization with slave 127.0.0.1:7003 succeeded</span><br><span class="line">4701:S 06 Feb 01:04:51.426 * MASTER &lt;-&gt; SLAVE sync: receiving 77 bytes from master</span><br><span class="line">4701:S 06 Feb 01:04:51.427 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">4701:S 06 Feb 01:04:51.427 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">4701:S 06 Feb 01:04:51.427 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line">4701:S 06 Feb 01:04:51.428 * Background append only file rewriting started by pid 5686</span><br><span class="line">4701:S 06 Feb 01:04:51.462 * AOF rewrite child asks to stop sending diffs.</span><br><span class="line">5686:C 06 Feb 01:04:51.462 * Parent agreed to stop sending diffs. Finalizing AOF...</span><br><span class="line">5686:C 06 Feb 01:04:51.462 * Concatenating 0.00 MB of AOF diff received from parent.</span><br><span class="line">5686:C 06 Feb 01:04:51.463 * SYNC append only file rewrite performed</span><br><span class="line">5686:C 06 Feb 01:04:51.463 * AOF rewrite: 6 MB of memory used by copy-on-write</span><br><span class="line">4701:S 06 Feb 01:04:51.519 * Background AOF rewrite terminated with success</span><br><span class="line">4701:S 06 Feb 01:04:51.520 * Residual parent diff successfully flushed to the rewritten AOF (0.00 MB)</span><br><span class="line">4701:S 06 Feb 01:04:51.520 * Background AOF rewrite finished successfully</span><br><span class="line">4772:S 06 Feb 01:04:51.527 * Connecting to MASTER 127.0.0.1:7001</span><br><span class="line">4772:S 06 Feb 01:04:51.527 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4772:S 06 Feb 01:04:51.527 * Non blocking connect for SYNC fired the event.</span><br><span class="line">4772:S 06 Feb 01:04:51.528 * Master replied to PING, replication can continue...</span><br><span class="line">4772:S 06 Feb 01:04:51.529 * Partial resynchronization not possible (no cached master)</span><br><span class="line">4741:M 06 Feb 01:04:51.529 * Slave 127.0.0.1:7004 asks for synchronization</span><br><span class="line">4741:M 06 Feb 01:04:51.529 * Full resync requested by slave 127.0.0.1:7004</span><br><span class="line">4741:M 06 Feb 01:04:51.529 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">4741:M 06 Feb 01:04:51.532 * Background saving started by pid 5687</span><br><span class="line">4772:S 06 Feb 01:04:51.535 * Full resync from master: be30d158d2de1e2edf37e74dc2c3cee348d02410:1</span><br><span class="line">5687:C 06 Feb 01:04:51.565 * DB saved on disk</span><br><span class="line">5687:C 06 Feb 01:04:51.566 * RDB: 6 MB of memory used by copy-on-write</span><br><span class="line">4790:S 06 Feb 01:04:51.584 * Connecting to MASTER 127.0.0.1:7002</span><br><span class="line">4790:S 06 Feb 01:04:51.584 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4790:S 06 Feb 01:04:51.584 * Non blocking connect for SYNC fired the event.</span><br><span class="line">4790:S 06 Feb 01:04:51.585 * Master replied to PING, replication can continue...</span><br><span class="line">4790:S 06 Feb 01:04:51.585 * Partial resynchronization not possible (no cached master)</span><br><span class="line">4756:M 06 Feb 01:04:51.585 * Slave 127.0.0.1:7005 asks for synchronization</span><br><span class="line">4756:M 06 Feb 01:04:51.585 * Full resync requested by slave 127.0.0.1:7005</span><br><span class="line">4756:M 06 Feb 01:04:51.585 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">4756:M 06 Feb 01:04:51.586 * Background saving started by pid 5688</span><br><span class="line">4790:S 06 Feb 01:04:51.587 * Full resync from master: 11082aa273a96447d9bdad8a6a004ea85878ad65:1</span><br><span class="line">4741:M 06 Feb 01:04:51.599 * Background saving terminated with success</span><br><span class="line">4772:S 06 Feb 01:04:51.600 * MASTER &lt;-&gt; SLAVE sync: receiving 77 bytes from master</span><br><span class="line">4741:M 06 Feb 01:04:51.600 * Synchronization with slave 127.0.0.1:7004 succeeded</span><br><span class="line">4772:S 06 Feb 01:04:51.600 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">4772:S 06 Feb 01:04:51.600 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">4772:S 06 Feb 01:04:51.600 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line">5688:C 06 Feb 01:04:51.624 * DB saved on disk</span><br><span class="line">4772:S 06 Feb 01:04:51.625 * Background append only file rewriting started by pid 5689</span><br><span class="line">5688:C 06 Feb 01:04:51.625 * RDB: 6 MB of memory used by copy-on-write</span><br><span class="line">4722:M 06 Feb 01:04:51.627 # Cluster state changed: ok</span><br><span class="line">4772:S 06 Feb 01:04:51.663 * AOF rewrite child asks to stop sending diffs.</span><br><span class="line">5689:C 06 Feb 01:04:51.663 * Parent agreed to stop sending diffs. Finalizing AOF...</span><br><span class="line">5689:C 06 Feb 01:04:51.663 * Concatenating 0.00 MB of AOF diff received from parent.</span><br><span class="line">5689:C 06 Feb 01:04:51.663 * SYNC append only file rewrite performed</span><br><span class="line">5689:C 06 Feb 01:04:51.664 * AOF rewrite: 6 MB of memory used by copy-on-write</span><br><span class="line">4756:M 06 Feb 01:04:51.665 * Background saving terminated with success</span><br><span class="line">4756:M 06 Feb 01:04:51.665 # Cluster state changed: ok</span><br><span class="line">4790:S 06 Feb 01:04:51.665 * MASTER &lt;-&gt; SLAVE sync: receiving 77 bytes from master</span><br><span class="line">4756:M 06 Feb 01:04:51.665 * Synchronization with slave 127.0.0.1:7005 succeeded</span><br><span class="line">4790:S 06 Feb 01:04:51.665 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">4790:S 06 Feb 01:04:51.665 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">4790:S 06 Feb 01:04:51.665 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line">4790:S 06 Feb 01:04:51.666 * Background append only file rewriting started by pid 5690</span><br><span class="line">4741:M 06 Feb 01:04:51.699 # Cluster state changed: ok</span><br><span class="line">4790:S 06 Feb 01:04:51.705 * AOF rewrite child asks to stop sending diffs.</span><br><span class="line">5690:C 06 Feb 01:04:51.705 * Parent agreed to stop sending diffs. Finalizing AOF...</span><br><span class="line">5690:C 06 Feb 01:04:51.706 * Concatenating 0.00 MB of AOF diff received from parent.</span><br><span class="line">5690:C 06 Feb 01:04:51.706 * SYNC append only file rewrite performed</span><br><span class="line">5690:C 06 Feb 01:04:51.707 * AOF rewrite: 4 MB of memory used by copy-on-write</span><br><span class="line">4772:S 06 Feb 01:04:51.727 * Background AOF rewrite terminated with success</span><br><span class="line">4772:S 06 Feb 01:04:51.727 * Residual parent diff successfully flushed to the rewritten AOF (0.00 MB)</span><br><span class="line">4772:S 06 Feb 01:04:51.727 * Background AOF rewrite finished successfully</span><br><span class="line">4790:S 06 Feb 01:04:51.785 * Background AOF rewrite terminated with success</span><br><span class="line">4790:S 06 Feb 01:04:51.785 * Residual parent diff successfully flushed to the rewritten AOF (0.00 MB)</span><br><span class="line">4790:S 06 Feb 01:04:51.785 * Background AOF rewrite finished successfully</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>以上为创建集群成功后的整个打印信息.</p>
+<p>以下信息表示集群创建成功.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br></pre></td></tr></table></figure>
+
+<p>连接上集群,查看集群信息</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ .&#x2F;src&#x2F;redis-cli -h 127.0.0.1 -p 7005</span><br><span class="line">127.0.0.1:7005&gt; cluster info</span><br><span class="line">cluster_state:ok</span><br><span class="line">cluster_slots_assigned:16384</span><br><span class="line">cluster_slots_ok:16384</span><br><span class="line">cluster_slots_pfail:0</span><br><span class="line">cluster_slots_fail:0</span><br><span class="line">cluster_known_nodes:6</span><br><span class="line">cluster_size:3</span><br><span class="line">cluster_current_epoch:6</span><br><span class="line">cluster_my_epoch:3</span><br><span class="line">cluster_stats_messages_sent:1559</span><br><span class="line">cluster_stats_messages_received:1559</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="检查集群"><a href="#检查集群" class="headerlink" title="检查集群"></a>检查集群</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ .&#x2F;src&#x2F;redis-cli -c -p 7005</span><br><span class="line">127.0.0.1:7005&gt; get foo</span><br><span class="line">-&gt; Redirected to slot [12182] located at 127.0.0.1:7002</span><br><span class="line">&quot;bar&quot;</span><br><span class="line">127.0.0.1:7002&gt; set test test</span><br><span class="line">-&gt; Redirected to slot [6918] located at 127.0.0.1:7001</span><br><span class="line">OK</span><br><span class="line">127.0.0.1:7001&gt; get test</span><br><span class="line">&quot;test&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>上面参数 -c表示集群客户端</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:7001&gt; get foo</span><br><span class="line">-&gt; Redirected to slot [12182] located at 127.0.0.1:7002</span><br><span class="line">&quot;bar&quot;</span><br><span class="line">127.0.0.1:7002&gt; get foo</span><br><span class="line">&quot;bar&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>注意以上语句 7002节点上存在foo/bar和cluster/test键值对,我们查看它对应的从节点7005的aof中存在的数据.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ cat -n appendonly.aof </span><br><span class="line">     1    *2</span><br><span class="line">     2    $6</span><br><span class="line">     3    SELECT</span><br><span class="line">     4    $1</span><br><span class="line">     5    0</span><br><span class="line">     6    *3</span><br><span class="line">     7    $3</span><br><span class="line">     8    set</span><br><span class="line">     9    $3</span><br><span class="line">    10    foo</span><br><span class="line">    11    $3</span><br><span class="line">    12    bar</span><br><span class="line">    13    *3</span><br><span class="line">    14    $3</span><br><span class="line">    15    set</span><br><span class="line">    16    $7</span><br><span class="line">    17    cluster</span><br><span class="line">    18    $4</span><br><span class="line">    19    test</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>aof中显示,7005节点存在两组键值对,表示主节点的数据同步到从节点上.</p>
+<h2 id="集群故障"><a href="#集群故障" class="headerlink" title="集群故障"></a>集群故障</h2><p>查看集群的情况</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:7005&gt; cluster nodes</span><br><span class="line">442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005 myself,slave bb31a89640b381e8de18f15a845512f08ab9f16f 0 0 6 connected</span><br><span class="line">df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003 slave a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 0 1517851933524 4 connected</span><br><span class="line">0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001 master - 0 1517851932019 2 connected 5461-10922</span><br><span class="line">bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002 master - 0 1517851933023 3 connected 10923-16383</span><br><span class="line">37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004 slave 0ca3673dfd352052b651b3898ba3f807ff9c7f55 0 1517851932019 5 connected</span><br><span class="line">a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000 master - 0 1517851933023 1 connected 0-5460</span><br></pre></td></tr></table></figure>
+<p>此时kill掉7000</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ ps -ef|grep redis</span><br><span class="line">root      4700  3041  0 00:56 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4701  4700  0 00:56 pts&#x2F;4    00:00:04 .&#x2F;src&#x2F;redis-server 127.0.0.1:7003 [cluster]</span><br><span class="line">root      4721  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4722  4721  0 00:57 pts&#x2F;4    00:00:04 .&#x2F;src&#x2F;redis-server 127.0.0.1:7000 [cluster]</span><br><span class="line">root      4740  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4741  4740  0 00:57 pts&#x2F;4    00:00:04 .&#x2F;src&#x2F;redis-server 127.0.0.1:7001 [cluster]</span><br><span class="line">root      4755  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4756  4755  0 00:57 pts&#x2F;4    00:00:04 .&#x2F;src&#x2F;redis-server 127.0.0.1:7002 [cluster]</span><br><span class="line">root      4771  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4772  4771  0 00:57 pts&#x2F;4    00:00:04 .&#x2F;src&#x2F;redis-server 127.0.0.1:7004 [cluster]</span><br><span class="line">root      4789  3041  0 00:58 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4790  4789  0 00:58 pts&#x2F;4    00:00:04 .&#x2F;src&#x2F;redis-server 127.0.0.1:7005 [cluster]</span><br><span class="line">zhuning+ 10601  3041  0 01:33 pts&#x2F;4    00:00:00 grep --color&#x3D;auto redis</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ sudo kill -9 4722</span><br><span class="line">[sudo] password for zhuningning: </span><br><span class="line">4701:S 06 Feb 01:34:11.707 # Connection with master lost.</span><br><span class="line">4701:S 06 Feb 01:34:11.707 * Caching the disconnected master state.</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7005$ 4701:S 06 Feb 01:34:12.163 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:34:12.163 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:34:12.163 # Error condition on socket for SYNC: Connection refused</span><br><span class="line">4701:S 06 Feb 01:34:13.168 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:34:13.169 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:34:13.169 # Error condition on socket for SYNC: Connection refused</span><br><span class="line">4701:S 06 Feb 01:34:14.174 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:34:14.175 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:34:14.175 # Error condition on socket for SYNC: Connection refused</span><br><span class="line">4701:S 06 Feb 01:34:15.180 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:34:15.181 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:34:15.181 # Error condition on socket for SYNC: Connection refused</span><br><span class="line">4701:S 06 Feb 01:34:16.186 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:34:16.186 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:34:16.186 # Error condition on socket for SYNC: Connection refused</span><br><span class="line">4701:S 06 Feb 01:34:17.190 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:34:17.190 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:34:17.190 # Error condition on socket for SYNC: Connection refused</span><br><span class="line">4790:S 06 Feb 01:34:17.769 * Marking node a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 as failing (quorum reached).</span><br><span class="line">4790:S 06 Feb 01:34:17.769 # Cluster state changed: fail</span><br><span class="line">4756:M 06 Feb 01:34:18.088 * Marking node a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 as failing (quorum reached).</span><br><span class="line">4756:M 06 Feb 01:34:18.088 # Cluster state changed: fail</span><br><span class="line">4741:M 06 Feb 01:34:18.089 * FAIL message received from bb31a89640b381e8de18f15a845512f08ab9f16f about a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4</span><br><span class="line">4701:S 06 Feb 01:34:18.089 * FAIL message received from bb31a89640b381e8de18f15a845512f08ab9f16f about a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4</span><br><span class="line">4772:S 06 Feb 01:34:18.089 * FAIL message received from bb31a89640b381e8de18f15a845512f08ab9f16f about a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4</span><br><span class="line">4701:S 06 Feb 01:34:18.089 # Cluster state changed: fail</span><br><span class="line">4741:M 06 Feb 01:34:18.089 # Cluster state changed: fail</span><br><span class="line">4772:S 06 Feb 01:34:18.089 # Cluster state changed: fail</span><br><span class="line">4701:S 06 Feb 01:34:18.094 # Start of election delayed for 515 milliseconds (rank #0, offset 2465).</span><br><span class="line">4701:S 06 Feb 01:34:18.194 * Connecting to MASTER 127.0.0.1:7000</span><br><span class="line">4701:S 06 Feb 01:34:18.194 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">4701:S 06 Feb 01:34:18.194 # Error condition on socket for SYNC: Connection refused</span><br><span class="line">4701:S 06 Feb 01:34:18.697 # Starting a failover election for epoch 7.</span><br><span class="line">4756:M 06 Feb 01:34:18.740 # Failover auth granted to df9ac983886f0f09b0c62feef9288a9296a1a08c for epoch 7</span><br><span class="line">4741:M 06 Feb 01:34:18.740 # Failover auth granted to df9ac983886f0f09b0c62feef9288a9296a1a08c for epoch 7</span><br><span class="line">4701:S 06 Feb 01:34:18.740 # Failover election won: I&#39;m the new master.</span><br><span class="line">4701:S 06 Feb 01:34:18.740 # configEpoch set to 7 after successful failover</span><br><span class="line">4701:M 06 Feb 01:34:18.740 * Discarding previously cached master state.</span><br><span class="line">4701:M 06 Feb 01:34:18.740 # Cluster state changed: ok</span><br><span class="line">4756:M 06 Feb 01:34:18.782 # Cluster state changed: ok</span><br><span class="line">4772:S 06 Feb 01:34:18.782 # Cluster state changed: ok</span><br><span class="line">4741:M 06 Feb 01:34:18.782 # Cluster state changed: ok</span><br><span class="line">4790:S 06 Feb 01:34:18.782 # Cluster state changed: ok</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>以上信息表示,在五秒的尝试连接7000节点,发现其连接不上.某个节点首先将其标识为fail状态,然后通过节点间通讯,各个节点都将7000节点对应的状态置为fail状态,然后各个节点将集群状态标识为fail状态.然后各个节点为7000节点的从节点投票选举出7003(在这7000只有一个从节点)为主节点,代替元7000的工作(管理其对应的槽位),然后集群状态恢复.</p>
+<p>此时集群状态如下: 7000 节点此时为fail状态,集群中正常的节点有5个.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:7005&gt; cluster nodes</span><br><span class="line">442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005 myself,slave bb31a89640b381e8de18f15a845512f08ab9f16f 0 0 6 connected</span><br><span class="line">df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003 master - 0 1517852576553 7 connected 0-5460</span><br><span class="line">0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001 master - 0 1517852576054 2 connected 5461-10922</span><br><span class="line">bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002 master - 0 1517852575048 3 connected 10923-16383</span><br><span class="line">37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004 slave 0ca3673dfd352052b651b3898ba3f807ff9c7f55 0 1517852575552 5 connected</span><br><span class="line">a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000 master,fail - 1517852051773 1517852049869 1 disconnected</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="故障节点恢复"><a href="#故障节点恢复" class="headerlink" title="故障节点恢复"></a>故障节点恢复</h2><p>恢复节点7000</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7000$ sudo .&#x2F;src&#x2F;redis-server redis.conf &amp;</span><br><span class="line"></span><br><span class="line">13569:M 06 Feb 01:45:53.163 # Server started, Redis version 3.2.11</span><br><span class="line">13569:M 06 Feb 01:45:53.163 # WARNING overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add &#39;vm.overcommit_memory &#x3D; 1&#39; to &#x2F;etc&#x2F;sysctl.conf and then reboot or run the command &#39;sysctl vm.overcommit_memory&#x3D;1&#39; for this to take effect.</span><br><span class="line">13569:M 06 Feb 01:45:53.163 # WARNING you have Transparent Huge Pages (THP) support enabled in your kernel. This will create latency and memory usage issues with Redis. To fix this issue run the command &#39;echo never &gt; &#x2F;sys&#x2F;kernel&#x2F;mm&#x2F;transparent_hugepage&#x2F;enabled&#39; as root, and add it to your &#x2F;etc&#x2F;rc.local in order to retain the setting after a reboot. Redis must be restarted after THP is disabled.</span><br><span class="line">13569:M 06 Feb 01:45:53.164 * The server is now ready to accept connections on port 7000</span><br><span class="line">13569:M 06 Feb 01:45:53.165 # Configuration change detected. Reconfiguring myself as a replica of df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">13569:S 06 Feb 01:45:53.166 # Cluster state changed: ok</span><br><span class="line">4756:M 06 Feb 01:45:53.247 * Clear FAIL state for node a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4: master without slots is reachable again.</span><br><span class="line">4790:S 06 Feb 01:45:53.247 * Clear FAIL state for node a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4: master without slots is reachable again.</span><br><span class="line">4772:S 06 Feb 01:45:53.254 * Clear FAIL state for node a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4: master without slots is reachable again.</span><br><span class="line">4701:M 06 Feb 01:45:53.259 * Clear FAIL state for node a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4: master without slots is reachable again.</span><br><span class="line">4741:M 06 Feb 01:45:53.261 * Clear FAIL state for node a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4: master without slots is reachable again.</span><br><span class="line">13569:S 06 Feb 01:45:54.168 * Connecting to MASTER 127.0.0.1:7003</span><br><span class="line">13569:S 06 Feb 01:45:54.168 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">13569:S 06 Feb 01:45:54.168 * Non blocking connect for SYNC fired the event.</span><br><span class="line">13569:S 06 Feb 01:45:54.168 * Master replied to PING, replication can continue...</span><br><span class="line">13569:S 06 Feb 01:45:54.169 * Partial resynchronization not possible (no cached master)</span><br><span class="line">4701:M 06 Feb 01:45:54.169 * Slave 127.0.0.1:7000 asks for synchronization</span><br><span class="line">4701:M 06 Feb 01:45:54.169 * Full resync requested by slave 127.0.0.1:7000</span><br><span class="line">4701:M 06 Feb 01:45:54.169 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">4701:M 06 Feb 01:45:54.170 * Background saving started by pid 13572</span><br><span class="line">13569:S 06 Feb 01:45:54.171 * Full resync from master: cecbe45078fac08152e9ca95d7741ae086b4ea68:1</span><br><span class="line">13572:C 06 Feb 01:45:54.218 * DB saved on disk</span><br><span class="line">13572:C 06 Feb 01:45:54.219 * RDB: 6 MB of memory used by copy-on-write</span><br><span class="line">4701:M 06 Feb 01:45:54.261 * Background saving terminated with success</span><br><span class="line">13569:S 06 Feb 01:45:54.261 * MASTER &lt;-&gt; SLAVE sync: receiving 77 bytes from master</span><br><span class="line">4701:M 06 Feb 01:45:54.261 * Synchronization with slave 127.0.0.1:7000 succeeded</span><br><span class="line">13569:S 06 Feb 01:45:54.262 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">13569:S 06 Feb 01:45:54.262 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">13569:S 06 Feb 01:45:54.262 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line">13569:S 06 Feb 01:45:54.281 * Background append only file rewriting started by pid 13573</span><br><span class="line">13569:S 06 Feb 01:45:54.333 * AOF rewrite child asks to stop sending diffs.</span><br><span class="line">13573:C 06 Feb 01:45:54.333 * Parent agreed to stop sending diffs. Finalizing AOF...</span><br><span class="line">13573:C 06 Feb 01:45:54.333 * Concatenating 0.00 MB of AOF diff received from parent.</span><br><span class="line">13573:C 06 Feb 01:45:54.334 * SYNC append only file rewrite performed</span><br><span class="line">13573:C 06 Feb 01:45:54.334 * AOF rewrite: 4 MB of memory used by copy-on-write</span><br><span class="line">13569:S 06 Feb 01:45:54.382 * Background AOF rewrite terminated with success</span><br><span class="line">13569:S 06 Feb 01:45:54.382 * Residual parent diff successfully flushed to the rewritten AOF (0.00 MB)</span><br><span class="line">13569:S 06 Feb 01:45:54.382 * Background AOF rewrite finished successfully</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>以下两种方式检查集群的状态</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7000$ .&#x2F;src&#x2F;redis-cli -c -p 7000</span><br><span class="line">127.0.0.1:7000&gt; cluster nodes</span><br><span class="line">37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004 slave 0ca3673dfd352052b651b3898ba3f807ff9c7f55 0 1517852872929 5 connected</span><br><span class="line">df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003 master - 0 1517852872427 7 connected 0-5460</span><br><span class="line">442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005 slave bb31a89640b381e8de18f15a845512f08ab9f16f 0 1517852873431 6 connected</span><br><span class="line">bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002 master - 0 1517852873431 3 connected 10923-16383</span><br><span class="line">0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001 master - 0 1517852871424 2 connected 5461-10922</span><br><span class="line">a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000 myself,slave df9ac983886f0f09b0c62feef9288a9296a1a08c 0 0 1 connected</span><br><span class="line">127.0.0.1:7000&gt; quit</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7000$ .&#x2F;src&#x2F;redis-trib.rb check 127.0.0.1:7001</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7001)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:5461-10922 (5462 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:10923-16383 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:0-5460 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>此时7000节点变为7003节点的从节点</p>
+<h2 id="集群中新加入删除节点"><a href="#集群中新加入删除节点" class="headerlink" title="集群中新加入删除节点"></a>集群中新加入删除节点</h2><h3 id="作为主节点加入"><a href="#作为主节点加入" class="headerlink" title="作为主节点加入"></a>作为主节点加入</h3><p>新复制一个节点7006,修改其端口号配置,然后启动.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo mkdir 7006 </span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster$ sudo cp redis-3.2.11&#x2F;* -r 7006&#x2F;</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster$ cd 7006</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ sudo .&#x2F;src&#x2F;redis-server redis.conf &amp;</span><br><span class="line">[8] 15048</span><br><span class="line"></span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ ps -ef|grep redis</span><br><span class="line">root      4700  3041  0 00:56 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4701  4700  0 00:56 pts&#x2F;4    00:00:09 .&#x2F;src&#x2F;redis-server 127.0.0.1:7003 [cluster]</span><br><span class="line">root      4740  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4741  4740  0 00:57 pts&#x2F;4    00:00:09 .&#x2F;src&#x2F;redis-server 127.0.0.1:7001 [cluster]</span><br><span class="line">root      4755  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4756  4755  0 00:57 pts&#x2F;4    00:00:09 .&#x2F;src&#x2F;redis-server 127.0.0.1:7002 [cluster]</span><br><span class="line">root      4771  3041  0 00:57 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4772  4771  0 00:57 pts&#x2F;4    00:00:08 .&#x2F;src&#x2F;redis-server 127.0.0.1:7004 [cluster]</span><br><span class="line">root      4789  3041  0 00:58 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root      4790  4789  0 00:58 pts&#x2F;4    00:00:09 .&#x2F;src&#x2F;redis-server 127.0.0.1:7005 [cluster]</span><br><span class="line">root     13568  3041  0 01:45 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root     13569 13568  0 01:45 pts&#x2F;4    00:00:01 .&#x2F;src&#x2F;redis-server 127.0.0.1:7000 [cluster]</span><br><span class="line">root     15048  3041  0 01:55 pts&#x2F;4    00:00:00 sudo .&#x2F;src&#x2F;redis-server redis.conf</span><br><span class="line">root     15049 15048  0 01:55 pts&#x2F;4    00:00:00 .&#x2F;src&#x2F;redis-server 127.0.0.1:7006 [cluster]</span><br><span class="line">zhuning+ 15139  3041  0 01:55 pts&#x2F;4    00:00:00 grep --color&#x3D;auto redis</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>加入新节点7006</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ .&#x2F;src&#x2F;redis-trib.rb add-node 127.0.0.1:7006 127.0.0.1:7000</span><br><span class="line"></span><br><span class="line">&gt;&gt;&gt; Adding node 127.0.0.1:7006 to cluster 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7000)</span><br><span class="line">S: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:0-5460 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:10923-16383 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:5461-10922 (5462 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line">&gt;&gt;&gt; Send CLUSTER MEET to node 127.0.0.1:7006 to make it join the cluster.</span><br><span class="line">[OK] New node added correctly.</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ 15049:M 06 Feb 01:57:40.626 # IP address for this node updated to 127.0.0.1</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ 15049:M 06 Feb 01:57:45.733 # Cluster state changed: ok</span><br></pre></td></tr></table></figure>
+
+<p>add-node是加入指令，127.0.0.1:7006 表示新加入的节点，127.0.0.1:7000 表示加入的集群的一个节点，用来辨识是哪个集群，理论上哪个都可以。</p>
+<p>检查集群状态,此时7006为master节点,处于无槽位状态.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ .&#x2F;src&#x2F;redis-trib.rb check 127.0.0.1:7006</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7006)</span><br><span class="line">M: 54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006</span><br><span class="line">   slots: (0 slots) master</span><br><span class="line">   0 additional replica(s)</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:0-5460 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:10923-16383 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:5461-10922 (5462 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>看来，redis cluster 不是在新加节点的时候帮我们做好了迁移工作，需要我们手动对集群进行重新分片迁移，也是这个命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ .&#x2F;src&#x2F;redis-trib.rb reshard 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7000)</span><br><span class="line">S: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:0-5460 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006</span><br><span class="line">   slots: (0 slots) master</span><br><span class="line">   0 additional replica(s)</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:10923-16383 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:5461-10922 (5462 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line">How many slots do you want to move (from 1 to 16384)? 4096</span><br><span class="line">What is the receiving node ID? efc3131fbdc6cf929720e0e0f7136cae85657481</span><br><span class="line">*** The specified node is not known or not a master, please retry.</span><br><span class="line">What is the receiving node ID? 54fe323634d8830f2ef93feaaedb2b70e19d0765</span><br><span class="line">Please enter all the source node IDs.</span><br><span class="line">  Type &#39;all&#39; to use all the nodes as source nodes for the hash slots.</span><br><span class="line">  Type &#39;done&#39; once you entered all the source nodes IDs.</span><br><span class="line">Source node #1:all</span><br><span class="line"></span><br><span class="line">Ready to move 4096 slots.</span><br><span class="line">  Source nodes:</span><br><span class="line">    M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:0-5460 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">    M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:10923-16383 (5461 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">    M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:5461-10922 (5462 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">  Destination node:</span><br><span class="line">    M: 54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006</span><br><span class="line">   slots: (0 slots) master</span><br><span class="line">   0 additional replica(s)</span><br><span class="line">  Resharding plan:</span><br><span class="line">    Moving slot 5461 from 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>第一个问句 how many slots do you want to move 平均的4096个</p>
+<p>第二个问句,接收节点的id :7006对应的节点id:efc3131fbdc6cf929720e0e0f7136cae85657481</p>
+<p>第三个问句,从哪获取这些槽位,  如果我们不打算从特定的节点上取出指定数量的哈希槽， 那么可以向 redis-trib 输入 all ， 这样的话， 集群中的所有主节点都会成为源节点.</p>
+<p>它会提示是否迁移,输入yes即可,但是最后出现如下的error,查阅资料说时cluster的 <a target="_blank" rel="noopener" href="https://github.com/antirez/redis/issues/4272">bug</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">[ERR] Calling MIGRATE: ERR Syntax error, try CLIENT (LIST | KILL | GETNAME | SETNAME | PAUSE | REPLY)</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ .&#x2F;src&#x2F;redis-trib.rb reshard 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7000)</span><br><span class="line">S: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:1365-5460 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006</span><br><span class="line">   slots:0-1364,5461-6826,10923-12181 (3990 slots) master</span><br><span class="line">   0 additional replica(s)</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:12182-16383 (4202 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:6827-10922 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">[WARNING] Node 127.0.0.1:7006 has slots in importing state (12182).</span><br><span class="line">[WARNING] Node 127.0.0.1:7002 has slots in migrating state (12182).</span><br><span class="line">[WARNING] The following slots are open: 12182</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line">*** Please fix your cluster problems before resharding</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+
+<p>12182这个数字看着比较熟悉,原来是之前的该槽位中有数据.暂时还么有解决.(???????????)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7006$ .&#x2F;src&#x2F;redis-cli -c -p 7006</span><br><span class="line">127.0.0.1:7006&gt; cluster nodes</span><br><span class="line">37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004 slave 0ca3673dfd352052b651b3898ba3f807ff9c7f55 0 1517854904123 2 connected</span><br><span class="line">df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003 master - 0 1517854903119 7 connected 1365-5460</span><br><span class="line">442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005 slave bb31a89640b381e8de18f15a845512f08ab9f16f 0 1517854903119 3 connected</span><br><span class="line">bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002 master - 0 1517854903621 3 connected 12182-16383</span><br><span class="line">54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006 myself,master - 0 0 8 connected 0-1364 5461-6826 10923-12181 [12182-&lt;-bb31a89640b381e8de18f15a845512f08ab9f16f]</span><br><span class="line">0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001 master - 0 1517854903621 2 connected 6827-10922</span><br><span class="line">a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000 slave df9ac983886f0f09b0c62feef9288a9296a1a08c 0 1517854902617 7 connected</span><br><span class="line">127.0.0.1:7006&gt; cluster info</span><br><span class="line">cluster_state:ok</span><br><span class="line">cluster_slots_assigned:16384</span><br><span class="line">cluster_slots_ok:16384</span><br><span class="line">cluster_slots_pfail:0</span><br><span class="line">cluster_slots_fail:0</span><br><span class="line">cluster_known_nodes:7</span><br><span class="line">cluster_size:4</span><br><span class="line">cluster_current_epoch:8</span><br><span class="line">cluster_my_epoch:8</span><br><span class="line">cluster_stats_messages_sent:7375</span><br><span class="line">cluster_stats_messages_received:7362</span><br><span class="line"></span><br><span class="line">127.0.0.1:7001&gt; set age 100</span><br><span class="line">-&gt; Redirected to slot [741] located at 127.0.0.1:7006</span><br><span class="line">OK</span><br><span class="line">127.0.0.1:7006&gt; get age</span><br><span class="line">&quot;100&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>暂时集群时可以用的,不知道以上的error有啥影响.</p>
+<h3 id="新建一个7007从节点"><a href="#新建一个7007从节点" class="headerlink" title="新建一个7007从节点"></a>新建一个7007从节点</h3><p>新建一个节点,启动和之前类似,不做描述.</p>
+<p>加入一个新节点,7007 </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7007$ .&#x2F;src&#x2F;redis-trib.rb add-node --slave 127.0.0.1:7007 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Adding node 127.0.0.1:7007 to cluster 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7000)</span><br><span class="line">S: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:1365-5460 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006</span><br><span class="line">   slots:0-1364,5461-6826,10923-12181 (3990 slots) master</span><br><span class="line">   0 additional replica(s)</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:12182-16383 (4202 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:6827-10922 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">[WARNING] Node 127.0.0.1:7006 has slots in importing state (12182).</span><br><span class="line">[WARNING] Node 127.0.0.1:7002 has slots in migrating state (12182).</span><br><span class="line">[WARNING] The following slots are open: 12182</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line">Automatically selected master 127.0.0.1:7006</span><br><span class="line">&gt;&gt;&gt; Send CLUSTER MEET to node 127.0.0.1:7007 to make it join the cluster.</span><br><span class="line">Waiting for the cluster to join.20427:M 06 Feb 02:30:11.160 # IP address for this node updated to 127.0.0.1</span><br><span class="line"></span><br><span class="line">&gt;&gt;&gt; Configure node as replica of 127.0.0.1:7006.</span><br><span class="line">20427:S 06 Feb 02:30:12.032 # Cluster state changed: ok</span><br><span class="line">[OK] New node added correctly.</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7007$ 20427:S 06 Feb 02:30:12.136 * Connecting to MASTER 127.0.0.1:7006</span><br><span class="line">20427:S 06 Feb 02:30:12.136 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">20427:S 06 Feb 02:30:12.136 * Non blocking connect for SYNC fired the event.</span><br><span class="line">20427:S 06 Feb 02:30:12.136 * Master replied to PING, replication can continue...</span><br><span class="line">20427:S 06 Feb 02:30:12.137 * Partial resynchronization not possible (no cached master)</span><br><span class="line">15049:M 06 Feb 02:30:12.137 * Slave 127.0.0.1:7007 asks for synchronization</span><br><span class="line">15049:M 06 Feb 02:30:12.137 * Full resync requested by slave 127.0.0.1:7007</span><br><span class="line">15049:M 06 Feb 02:30:12.137 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">15049:M 06 Feb 02:30:12.138 * Background saving started by pid 20906</span><br><span class="line">20427:S 06 Feb 02:30:12.139 * Full resync from master: defd3e21a2f15f27e3319035074c5002d4ff4b1b:1</span><br><span class="line">20906:C 06 Feb 02:30:12.500 * DB saved on disk</span><br><span class="line">20906:C 06 Feb 02:30:12.501 * RDB: 6 MB of memory used by copy-on-write</span><br><span class="line">15049:M 06 Feb 02:30:12.509 * Background saving terminated with success</span><br><span class="line">20427:S 06 Feb 02:30:12.510 * MASTER &lt;-&gt; SLAVE sync: receiving 89 bytes from master</span><br><span class="line">15049:M 06 Feb 02:30:12.510 * Synchronization with slave 127.0.0.1:7007 succeeded</span><br><span class="line">20427:S 06 Feb 02:30:12.510 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">20427:S 06 Feb 02:30:12.510 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">20427:S 06 Feb 02:30:12.510 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line">20427:S 06 Feb 02:30:12.512 * Background append only file rewriting started by pid 20907</span><br><span class="line">20427:S 06 Feb 02:30:12.581 * AOF rewrite child asks to stop sending diffs.</span><br><span class="line">20907:C 06 Feb 02:30:12.582 * Parent agreed to stop sending diffs. Finalizing AOF...</span><br><span class="line">20907:C 06 Feb 02:30:12.582 * Concatenating 0.00 MB of AOF diff received from parent.</span><br><span class="line">20907:C 06 Feb 02:30:12.582 * SYNC append only file rewrite performed</span><br><span class="line">20907:C 06 Feb 02:30:12.583 * AOF rewrite: 6 MB of memory used by copy-on-write</span><br><span class="line">20427:S 06 Feb 02:30:12.639 * Background AOF rewrite terminated with success</span><br><span class="line">20427:S 06 Feb 02:30:12.639 * Residual parent diff successfully flushed to the rewritten AOF (0.00 MB)</span><br><span class="line">20427:S 06 Feb 02:30:12.639 * Background AOF rewrite finished successfully</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>add-node的时候加上–slave表示是加入到从节点中，但是这样加，是随机的。这里的命令行完全像我们在添加一个新主服务器时使用的一样，所以我们没有指定要给哪个主服 务器添加副本。这种情况下，redis-trib 会将7007作为一个具有较少副本的随机的主服务器的副本。</p>
+<ul>
+<li>加入从节点,为该从节点指定一个主节点 </li>
+</ul>
+<p>新建7008节点</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7008$ .&#x2F;src&#x2F;redis-trib.rb add-node --slave --master-id df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7008 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Adding node 127.0.0.1:7008 to cluster 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7000)</span><br><span class="line">S: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates df9ac983886f0f09b0c62feef9288a9296a1a08c</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">M: df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003</span><br><span class="line">   slots:1365-5460 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: db439109563a804d8d63ffdb6937baf88adde5cc 127.0.0.1:7007</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 54fe323634d8830f2ef93feaaedb2b70e19d0765</span><br><span class="line">M: 54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006</span><br><span class="line">   slots:0-1364,5461-6826,10923-12181 (3990 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:12182-16383 (4202 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:6827-10922 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">[WARNING] Node 127.0.0.1:7006 has slots in importing state (12182).</span><br><span class="line">[WARNING] Node 127.0.0.1:7002 has slots in migrating state (12182).</span><br><span class="line">[WARNING] The following slots are open: 12182</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line">&gt;&gt;&gt; Send CLUSTER MEET to node 127.0.0.1:7008 to make it join the cluster.</span><br><span class="line">Waiting for the cluster to join.21391:M 06 Feb 02:36:05.351 # IP address for this node updated to 127.0.0.1</span><br><span class="line"></span><br><span class="line">&gt;&gt;&gt; Configure node as replica of 127.0.0.1:7003.</span><br><span class="line">21391:S 06 Feb 02:36:06.188 # Cluster state changed: ok</span><br><span class="line">[OK] New node added correctly.</span><br><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7008$ 21391:S 06 Feb 02:36:06.612 * Connecting to MASTER 127.0.0.1:7003</span><br><span class="line">21391:S 06 Feb 02:36:06.612 * MASTER &lt;-&gt; SLAVE sync started</span><br><span class="line">21391:S 06 Feb 02:36:06.612 * Non blocking connect for SYNC fired the event.</span><br><span class="line">21391:S 06 Feb 02:36:06.613 * Master replied to PING, replication can continue...</span><br><span class="line">21391:S 06 Feb 02:36:06.613 * Partial resynchronization not possible (no cached master)</span><br><span class="line">4701:M 06 Feb 02:36:06.613 * Slave 127.0.0.1:7008 asks for synchronization</span><br><span class="line">4701:M 06 Feb 02:36:06.614 * Full resync requested by slave 127.0.0.1:7008</span><br><span class="line">4701:M 06 Feb 02:36:06.614 * Starting BGSAVE for SYNC with target: disk</span><br><span class="line">4701:M 06 Feb 02:36:06.616 * Background saving started by pid 21659</span><br><span class="line">21391:S 06 Feb 02:36:06.617 * Full resync from master: cecbe45078fac08152e9ca95d7741ae086b4ea68:4201</span><br><span class="line">21659:C 06 Feb 02:36:06.659 * DB saved on disk</span><br><span class="line">21659:C 06 Feb 02:36:06.660 * RDB: 8 MB of memory used by copy-on-write</span><br><span class="line">4701:M 06 Feb 02:36:06.753 * Background saving terminated with success</span><br><span class="line">4701:M 06 Feb 02:36:06.753 * Synchronization with slave 127.0.0.1:7008 succeeded</span><br><span class="line">21391:S 06 Feb 02:36:06.753 * MASTER &lt;-&gt; SLAVE sync: receiving 77 bytes from master</span><br><span class="line">21391:S 06 Feb 02:36:06.754 * MASTER &lt;-&gt; SLAVE sync: Flushing old data</span><br><span class="line">21391:S 06 Feb 02:36:06.754 * MASTER &lt;-&gt; SLAVE sync: Loading DB in memory</span><br><span class="line">21391:S 06 Feb 02:36:06.754 * MASTER &lt;-&gt; SLAVE sync: Finished with success</span><br><span class="line">21391:S 06 Feb 02:36:06.755 * Background append only file rewriting started by pid 21660</span><br><span class="line">21391:S 06 Feb 02:36:06.790 * AOF rewrite child asks to stop sending diffs.</span><br><span class="line">21660:C 06 Feb 02:36:06.790 * Parent agreed to stop sending diffs. Finalizing AOF...</span><br><span class="line">21660:C 06 Feb 02:36:06.791 * Concatenating 0.00 MB of AOF diff received from parent.</span><br><span class="line">21660:C 06 Feb 02:36:06.791 * SYNC append only file rewrite performed</span><br><span class="line">21660:C 06 Feb 02:36:06.792 * AOF rewrite: 6 MB of memory used by copy-on-write</span><br><span class="line">21391:S 06 Feb 02:36:06.814 * Background AOF rewrite terminated with success</span><br><span class="line">21391:S 06 Feb 02:36:06.814 * Residual parent diff successfully flushed to the rewritten AOF (0.00 MB)</span><br><span class="line">21391:S 06 Feb 02:36:06.814 * Background AOF rewrite finished successfully</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>–master-id 指定7003节点成为7008节点的主节点</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7008$ .&#x2F;src&#x2F;redis-cli -c -p 7008 </span><br><span class="line">127.0.0.1:7008&gt; cluster nodes</span><br><span class="line">db439109563a804d8d63ffdb6937baf88adde5cc 127.0.0.1:7007 slave 54fe323634d8830f2ef93feaaedb2b70e19d0765 0 1517855860750 8 connected</span><br><span class="line">bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002 master - 0 1517855861752 3 connected 12182-16383</span><br><span class="line">54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006 master - 0 1517855861751 8 connected 0-1364 5461-6826 10923-12181</span><br><span class="line">df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003 master - 0 1517855859747 7 connected 1365-5460</span><br><span class="line">0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001 master - 0 1517855860248 2 connected 6827-10922</span><br><span class="line">37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004 slave 0ca3673dfd352052b651b3898ba3f807ff9c7f55 0 1517855861251 2 connected</span><br><span class="line">442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005 slave bb31a89640b381e8de18f15a845512f08ab9f16f 0 1517855860750 3 connected</span><br><span class="line">c29ea305fc8283a9987629b10dbc2ccae97c0c38 127.0.0.1:7008 myself,slave df9ac983886f0f09b0c62feef9288a9296a1a08c 0 0 0 connected</span><br><span class="line">a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000 slave df9ac983886f0f09b0c62feef9288a9296a1a08c 0 1517855860248 7 connected</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<p>7003是7008和7000的主节点,kill掉70003,7000成为主节点</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:7008&gt; cluster nodes</span><br><span class="line">db439109563a804d8d63ffdb6937baf88adde5cc 127.0.0.1:7007 slave 54fe323634d8830f2ef93feaaedb2b70e19d0765 0 1517856011263 8 connected</span><br><span class="line">bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002 master - 0 1517856010761 3 connected 12182-16383</span><br><span class="line">54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006 master - 0 1517856010862 8 connected 0-1364 5461-6826 10923-12181</span><br><span class="line">df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003 master,fail - 1517855992209 1517855990103 7 disconnected</span><br><span class="line">0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001 master - 0 1517856009257 2 connected 6827-10922</span><br><span class="line">37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004 slave 0ca3673dfd352052b651b3898ba3f807ff9c7f55 0 1517856010761 2 connected</span><br><span class="line">442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005 slave bb31a89640b381e8de18f15a845512f08ab9f16f 0 1517856009757 3 connected</span><br><span class="line">c29ea305fc8283a9987629b10dbc2ccae97c0c38 127.0.0.1:7008 myself,slave a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 0 0 0 connected</span><br><span class="line">a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000 master - 0 1517856010258 9 connected 1365-5460</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h3 id="移除一个主节点"><a href="#移除一个主节点" class="headerlink" title="移除一个主节点"></a>移除一个主节点</h3><p>和新加节点有点不同的是，移除需要节点的node-id。那我们尝试将7002这个主节点移除：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7008$ .&#x2F;src&#x2F;redis-trib.rb del-node 127.0.0.1:7000 bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">&gt;&gt;&gt; Removing node bb31a89640b381e8de18f15a845512f08ab9f16f from cluster 127.0.0.1:7000</span><br><span class="line">[ERR] Node 127.0.0.1:7002 is not empty! Reshard data away and try again.</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>提示节点非空,需要重新分片</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7008$ .&#x2F;src&#x2F;redis-trib.rb reshard 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Performing Cluster Check (using node 127.0.0.1:7000)</span><br><span class="line">M: a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000</span><br><span class="line">   slots:1365-5460 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: db439109563a804d8d63ffdb6937baf88adde5cc 127.0.0.1:7007</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 54fe323634d8830f2ef93feaaedb2b70e19d0765</span><br><span class="line">M: 54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006</span><br><span class="line">   slots:0-1364,5461-6826,10923-12181 (3990 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">M: 0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001</span><br><span class="line">   slots:6827-10922 (4096 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">S: c29ea305fc8283a9987629b10dbc2ccae97c0c38 127.0.0.1:7008</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4</span><br><span class="line">S: 37b5d56cbce25be2e3ad25b52ce39e3e4885654e 127.0.0.1:7004</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates 0ca3673dfd352052b651b3898ba3f807ff9c7f55</span><br><span class="line">S: 442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005</span><br><span class="line">   slots: (0 slots) slave</span><br><span class="line">   replicates bb31a89640b381e8de18f15a845512f08ab9f16f</span><br><span class="line">M: bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002</span><br><span class="line">   slots:12182-16383 (4202 slots) master</span><br><span class="line">   1 additional replica(s)</span><br><span class="line">[OK] All nodes agree about slots configuration.</span><br><span class="line">&gt;&gt;&gt; Check for open slots...</span><br><span class="line">[WARNING] Node 127.0.0.1:7006 has slots in importing state (12182).</span><br><span class="line">[WARNING] Node 127.0.0.1:7002 has slots in migrating state (12182).</span><br><span class="line">[WARNING] The following slots are open: 12182</span><br><span class="line">&gt;&gt;&gt; Check slots coverage...</span><br><span class="line">[OK] All 16384 slots covered.</span><br><span class="line">*** Please fix your cluster problems before resharding</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>由于上面的error,现在不能重新分片,所以暂时没办法演示删除主节点.如果你的可以重新分片,则将7002中的槽位移动到其它某个master节点(不知道slave节点是否可以,读者可以自行实验).</p>
+<p>然后重新执行删除操作即可.</p>
+<h3 id="移除一个从节点"><a href="#移除一个从节点" class="headerlink" title="移除一个从节点"></a>移除一个从节点</h3><p>由于不考虑数据迁移,则直接删除即可,在此删除从节点7004</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">zhuningning@ubuntu:&#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7008$ .&#x2F;src&#x2F;redis-trib.rb del-node 127.0.0.1:7000 37b5d56cbce25be2e3ad25b52ce39e3e4885654e</span><br><span class="line">&gt;&gt;&gt; Removing node 37b5d56cbce25be2e3ad25b52ce39e3e4885654e from cluster 127.0.0.1:7000</span><br><span class="line">&gt;&gt;&gt; Sending CLUSTER FORGET messages to the cluster...</span><br><span class="line">&gt;&gt;&gt; SHUTDOWN the node.</span><br><span class="line">4772:S 06 Feb 02:52:42.770 # User requested shutdown...</span><br><span class="line">4772:S 06 Feb 02:52:42.770 * Calling fsync() on the AOF file.</span><br><span class="line">4772:S 06 Feb 02:52:42.770 * Saving the final RDB snapshot before exiting.</span><br><span class="line">4772:S 06 Feb 02:52:42.860 * DB saved on disk</span><br><span class="line">4772:S 06 Feb 02:52:42.860 * Removing the pid file.</span><br><span class="line">4772:S 06 Feb 02:52:42.860 # Redis is now ready to exit, bye bye...</span><br><span class="line">4741:M 06 Feb 02:52:42.861 # Connection with slave 127.0.0.1:7004 lost.</span><br><span class="line">[5]   Done                    sudo .&#x2F;src&#x2F;redis-server redis.conf  (wd: &#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7004)</span><br><span class="line">(wd now: &#x2F;usr&#x2F;local&#x2F;redisCluster&#x2F;7008)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>查询集群状态,被删除的和fail状态的不同.fail仍然数据该集群,恢复后仍然可以加入集群,删除则不存在集群了,需要手动操作去加入集群.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">127.0.0.1:7008&gt; cluster nodes</span><br><span class="line">db439109563a804d8d63ffdb6937baf88adde5cc 127.0.0.1:7007 slave 54fe323634d8830f2ef93feaaedb2b70e19d0765 0 1517856814381 8 connected</span><br><span class="line">bb31a89640b381e8de18f15a845512f08ab9f16f 127.0.0.1:7002 master - 0 1517856814884 3 connected 12182-16383</span><br><span class="line">54fe323634d8830f2ef93feaaedb2b70e19d0765 127.0.0.1:7006 master - 0 1517856814884 8 connected 0-1364 5461-6826 10923-12181</span><br><span class="line">df9ac983886f0f09b0c62feef9288a9296a1a08c 127.0.0.1:7003 master,fail - 1517855992209 1517855990103 7 disconnected</span><br><span class="line">0ca3673dfd352052b651b3898ba3f807ff9c7f55 127.0.0.1:7001 master - 0 1517856815383 2 connected 6827-10922</span><br><span class="line">442c6654dfda38fe6544c96627fcafaac833a7be 127.0.0.1:7005 slave bb31a89640b381e8de18f15a845512f08ab9f16f 0 1517856814381 3 connected</span><br><span class="line">c29ea305fc8283a9987629b10dbc2ccae97c0c38 127.0.0.1:7008 myself,slave a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 0 0 0 connected</span><br><span class="line">a05c8dcbd5e7861000b3b5bf7e28d6843c85efe4 127.0.0.1:7000 master - 0 1517856813375 9 connected 1365-5460</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><a target="_blank" rel="noopener" href="https://www.zybuluo.com/phper/note/195558">redis集群研究和实践</a></p>
+<p><a target="_blank" rel="noopener" href="http://blog.51cto.com/hsbxxl/1978491">在线迁移redis cluster</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/redis-cluster/" rel="tag"># redis cluster</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-01-28/redis%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0-cluster/" rel="prev" title="redis设计与实现-cluster">
+      <i class="fa fa-chevron-left"></i> redis设计与实现-cluster
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-02-08/redis%E9%9B%86%E7%BE%A4-%E4%B8%BB%E4%BB%8E%E9%85%8D%E7%BD%AE/" rel="next" title="redis集群-主从配置">
+      redis集群-主从配置 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%B3%E4%BA%8Eredis-cluster"><span class="nav-number">1.</span> <span class="nav-text">关于redis cluster</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis-Cluster%E4%B8%BB%E4%BB%8E%E6%A8%A1%E5%BC%8F"><span class="nav-number">2.</span> <span class="nav-text">Redis Cluster主从模式</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AE%9E%E6%88%98"><span class="nav-number">3.</span> <span class="nav-text">实战</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9B%E5%BB%BA%E5%B9%B6%E4%BD%BF%E7%94%A8%E9%9B%86%E7%BE%A4"><span class="nav-number">3.1.</span> <span class="nav-text">创建并使用集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A3%80%E6%9F%A5%E9%9B%86%E7%BE%A4"><span class="nav-number">3.2.</span> <span class="nav-text">检查集群</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%9B%86%E7%BE%A4%E6%95%85%E9%9A%9C"><span class="nav-number">3.3.</span> <span class="nav-text">集群故障</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%85%E9%9A%9C%E8%8A%82%E7%82%B9%E6%81%A2%E5%A4%8D"><span class="nav-number">3.4.</span> <span class="nav-text">故障节点恢复</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%9B%86%E7%BE%A4%E4%B8%AD%E6%96%B0%E5%8A%A0%E5%85%A5%E5%88%A0%E9%99%A4%E8%8A%82%E7%82%B9"><span class="nav-number">3.5.</span> <span class="nav-text">集群中新加入删除节点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BD%9C%E4%B8%BA%E4%B8%BB%E8%8A%82%E7%82%B9%E5%8A%A0%E5%85%A5"><span class="nav-number">3.5.1.</span> <span class="nav-text">作为主节点加入</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B0%E5%BB%BA%E4%B8%80%E4%B8%AA7007%E4%BB%8E%E8%8A%82%E7%82%B9"><span class="nav-number">3.5.2.</span> <span class="nav-text">新建一个7007从节点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A7%BB%E9%99%A4%E4%B8%80%E4%B8%AA%E4%B8%BB%E8%8A%82%E7%82%B9"><span class="nav-number">3.5.3.</span> <span class="nav-text">移除一个主节点</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A7%BB%E9%99%A4%E4%B8%80%E4%B8%AA%E4%BB%8E%E8%8A%82%E7%82%B9"><span class="nav-number">3.5.4.</span> <span class="nav-text">移除一个从节点</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="陈伟杰"
+      src="/images/favicon.ico">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/chenwj1103" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;chenwj1103" rel="noopener" target="_blank"><i class="github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.0.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"www.chenwj.cn","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="堆大小设置对于32位的系统，一般限制在1.5-2G；64位操作系统对内存无限制。 典型设置123456789101112java -Xmx3550m -Xms3550m -Xmn2g -Xss128kjava -Xmx3550m -Xms3550m -Xss128k -XX:NewRatio&#x3D;4 -XX:SurvivorRatio&#x3D;4 -XX:MaxPermSize&#x3D;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JVM调优总结">
+<meta property="og:url" content="http://www.chenwj.cn/2018-10-18/JVM%E8%B0%83%E4%BC%98%E6%80%BB%E7%BB%93/index.html">
+<meta property="og:site_name" content="茄子的博客">
+<meta property="og:description" content="堆大小设置对于32位的系统，一般限制在1.5-2G；64位操作系统对内存无限制。 典型设置123456789101112java -Xmx3550m -Xms3550m -Xmn2g -Xss128kjava -Xmx3550m -Xms3550m -Xss128k -XX:NewRatio&#x3D;4 -XX:SurvivorRatio&#x3D;4 -XX:MaxPermSize&#x3D;">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2018-10-18T15:35:04.000Z">
+<meta property="article:modified_time" content="2020-08-20T17:03:09.816Z">
+<meta property="article:author" content="陈伟杰">
+<meta property="article:tag" content="JVM调优">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="http://www.chenwj.cn/2018-10-18/JVM%E8%B0%83%E4%BC%98%E6%80%BB%E7%BB%93/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>JVM调优总结 | 茄子的博客</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="茄子的博客" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">茄子的博客</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">技术博客</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="user fa-fw"></i>关于</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">68</span></a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">26</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">75</span></a>
+
+  </li>
+        <li class="menu-item menu-item-sitemap">
+
+    <a href="/sitemap.xml" rel="section"><i class="sitemap fa-fw"></i>站点地图</a>
+
+  </li>
+        <li class="menu-item menu-item-commonweal">
+
+    <a href="/404/" rel="section"><i class="heartbeat fa-fw"></i>公益 404</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://www.chenwj.cn/2018-10-18/JVM%E8%B0%83%E4%BC%98%E6%80%BB%E7%BB%93/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/favicon.ico">
+      <meta itemprop="name" content="陈伟杰">
+      <meta itemprop="description" content="学习，坚持。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="茄子的博客">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          JVM调优总结
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2018-10-18 23:35:04" itemprop="dateCreated datePublished" datetime="2018-10-18T23:35:04+08:00">2018-10-18</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2020-08-21 01:03:09" itemprop="dateModified" datetime="2020-08-21T01:03:09+08:00">2020-08-21</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="本文字数">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">本文字数：</span>
+              <span>9.7k</span>
+            </span>
+            <span class="post-meta-item" title="阅读时长">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">阅读时长 &asymp;</span>
+              <span>9 分钟</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="堆大小设置"><a href="#堆大小设置" class="headerlink" title="堆大小设置"></a>堆大小设置</h1><p>对于32位的系统，一般限制在1.5-2G；64位操作系统对内存无限制。</p>
+<h2 id="典型设置"><a href="#典型设置" class="headerlink" title="典型设置"></a>典型设置</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">java -Xmx3550m -Xms3550m -Xmn2g -Xss128k</span><br><span class="line"></span><br><span class="line">java -Xmx3550m -Xms3550m -Xss128k -XX:NewRatio&#x3D;4 -XX:SurvivorRatio&#x3D;4 -XX:MaxPermSize&#x3D;16m -XX:MaxTenuringThreshold&#x3D;0</span><br><span class="line"></span><br><span class="line">-Xmx3550M 最大堆内存</span><br><span class="line">-Xms3550M 初始内存</span><br><span class="line">-Xmn2G    年轻代内存 这个JVM的大小&#x3D;年轻代大小+年老代的大小+持久代的大小，持久代一般固定为64M，年轻代越大就会减小年老代的大小，此值对系统的性能影响较大，sun官方推荐配置为整个对的3&#x2F;8</span><br><span class="line">-Xss128K  线程栈的大小 设置每个线程栈的大小。jdk5以后每个线程堆栈的大小为1M，以前每个线程栈的大小为256k</span><br><span class="line">-XX:NewRatio&#x3D;4 设置年轻代（包括Eden和Survivor）与老年代的比值（除去持久代）。设置为4 则年轻代与老年代所占比值为1:4，年轻代占整个堆栈的1&#x2F;5</span><br><span class="line">-XX:SurvivorRatio&#x3D;4 设置年轻代中的Eden与Survivor区的大小比值。设置为4，则两个Survivor与一个Eden区的比值为2:4，一个Survivor区占整个年轻代的1&#x2F;6</span><br><span class="line">-XX:MaxPermSize&#x3D;16M 设置持久代的大小为16M</span><br><span class="line">-XX:MaxtenuringThreshold&#x3D;0 设置垃圾最大年龄。如果设置为0的话，则年轻代对象不经过Survivor区直接进入年老代。对于年老代比较多的应用，则可以提高效率。如果设置一个较大值，则年轻对象则会在Survivor区进行多次复制，则可以增加对象在年轻代的存活时间。</span><br></pre></td></tr></table></figure>
+<h1 id="回收器选择"><a href="#回收器选择" class="headerlink" title="回收器选择"></a>回收器选择</h1><p>JVM给了三种选择：串行收集器/并行收集器/并发收集器。但是串行收集器只适用于小数据量的情况，所以这里的选择主要针对并行收集器和并发收集器。默认情况下，JDK5.0以前都是使用串行收集器，如果想使用其他收集器需要在启动时加入相应参数。JDK5.0以后，JVM会根据当前系统配置进行判断。</p>
+<h2 id="吞吐量优先的并行收集器"><a href="#吞吐量优先的并行收集器" class="headerlink" title="吞吐量优先的并行收集器"></a>吞吐量优先的并行收集器</h2><p>并行收集器主要以到达一定的吞吐量为目标，适用于科学技术和后台处理等</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">java -Xmx3800m -Xms3800m -Xmn2g -Xss128k -XX:+UseParallelGC -XX:ParallelGCThreads&#x3D;20</span><br><span class="line">-XX:+UseParallelGC:选择垃圾收集器为并行收集器。此配置仅对年轻代有效。即上述配置下，年轻代使用并行收集器，老年代使用串行收集器</span><br><span class="line">-XX：ParallelGCThreads&#x3D;20：配置并行收集器的线程数，即同时多少个线程一起并行垃圾回收。此值最好与处理器数目相等。</span><br><span class="line"></span><br><span class="line">java -Xmx3550m -Xms3550m -Xmn2g -Xss128k -XX:+UseParallelGC -XX:ParallelGCThreads&#x3D;20 -XX:+UseParallelOldGC</span><br><span class="line">-XX:+UseParallelOldGC 配置年老代垃圾收集方式为并行收集。JDK6支持对年老代并行收集</span><br><span class="line"></span><br><span class="line">java -Xmx3550m -Xms3550m -Xmn2g -Xss128k -XX:+UseParallelGC  -XX:MaxGCPauseMillis&#x3D;100</span><br><span class="line">-XX:+MaxGCPauseMillis&#x3D;100:设置年轻代垃圾回收的最长时间，如果无法满足此时间，JVM会自动调整年轻代的大小，以蛮子此值。</span><br><span class="line"></span><br><span class="line">java -Xmx3550m -Xms3550m -Xmn2g -Xss128k -XX:+UseParallelGC  -XX:MaxGCPauseMillis&#x3D;100 -XX:+UseAdaptiveSizePolicy</span><br><span class="line">-XX:+UseAdaptiveSizePolicy:设置此值后，并行收集器会自动选择年轻代区大小和相应的Survivor区比例，以达到目标系统规定的最低相应时间和收集频率，此值建议使用并行收集器时，一直打开。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="响应时间有限的并发收集器"><a href="#响应时间有限的并发收集器" class="headerlink" title="响应时间有限的并发收集器"></a>响应时间有限的并发收集器</h2><p>并发收集器主要是保证系统的响应时间，减少垃圾收集时的停顿时间。适用于应用服务器、电信领域等。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">java -Xmx3550m -Xms3550m -Xmn2g -Xss128k -XX:ParallelGCThreads&#x3D;20 -XX:+UseConcMarkSweepGC -XX:+UseParNewGC</span><br><span class="line">-XX:+UseConcMarkSweepGC 设置老年代为并发收集，配置这个以后 -XX:NewRatio&#x3D;4的配置失效了，原因不明。所以此时年轻代大小最好使用-Xmn设置</span><br><span class="line">-XX:+UseParNewGC 设置年轻代为并行收集。可与CMS收集同时使用。JDK5以上，JVM会根据系统设置自行配置，无需设置此值。</span><br><span class="line"></span><br><span class="line">java -Xmx3550m -Xms3550m -Xmn2g -Xss128k -XX:+UseConcMarkSweepGC -XX:CMSFullGCsBeforeCompaction&#x3D;5 -XX:+UseCMSCompactAtFullCollection</span><br><span class="line">-XX：CMSFullGCsBeforeCompaction:由于并发收集器不对内存空间压缩整理，所以一段时间以后会产生碎片，使得运行效率低下，此值设置运行多少次GC有多少次以后对内存空间进行压缩整理</span><br><span class="line">-XX：+UseCMSCompactFullCollection:打开年老代的压缩，可能会影响性能，但是可以消除碎片</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h1 id="辅助信息"><a href="#辅助信息" class="headerlink" title="辅助信息"></a>辅助信息</h1><p>JVM提供了许多命令行参数，打印信息，供调试使用</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line">-XX:+PrintGC</span><br><span class="line">输出形式：[GC 118250K-&gt;113543K(130112K), 0.0094143 secs]</span><br><span class="line">        [Full GC 121376K-&gt;10414K(130112K), 0.0650971 secs]</span><br><span class="line"></span><br><span class="line">-XX：+PrintGCDetails</span><br><span class="line">输出形式：[GC [DefNew: 8614K-&gt;781K(9088K), 0.0123035 secs] 118250K-&gt;113543K(130112K), 0.0124633 secs]</span><br><span class="line">        [GC [DefNew: 8614K-&gt;8614K(9088K), 0.0000665 secs][Tenured: 112761K-&gt;10414K(121024K), 0.0433488 secs] 121376K-&gt;10414K(130112K), 0.0436268 secs]</span><br><span class="line"></span><br><span class="line">-XX:+PrintGCTimeStamps -XX:+PrintGC：PrintGCTimeStamps可与上面两个混合使用</span><br><span class="line">输出形式：11.851: [GC 98328K-&gt;93620K(130112K), 0.0082960 secs]</span><br><span class="line"></span><br><span class="line">-XX:+PrintGCApplicationConcurrentTime:打印垃圾回收前，程序未中断的执行时间</span><br><span class="line">输出形式：Application time: 0.5291524 seconds</span><br><span class="line"></span><br><span class="line">-XX:+PrintGCApplicationStoppedTime：打印垃圾回收期间程序暂停的时间。可与上面混合使用</span><br><span class="line">输出形式：Total time for which application threads were stopped: 0.0468229 seconds</span><br><span class="line"></span><br><span class="line">-XX:PrintHeapAtGC:打印GC前后的详细堆栈信息</span><br><span class="line">输出形式：</span><br><span class="line">34.702: [GC &#123;Heap before gc invocations&#x3D;7:</span><br><span class="line"> def new generation   total 55296K, used 52568K [0x1ebd0000, 0x227d0000, 0x227d0000)</span><br><span class="line">eden space 49152K,  99% used [0x1ebd0000, 0x21bce430, 0x21bd0000)</span><br><span class="line">from space 6144K,  55% used [0x221d0000, 0x22527e10, 0x227d0000)</span><br><span class="line">  to   space 6144K,   0% used [0x21bd0000, 0x21bd0000, 0x221d0000)</span><br><span class="line"> tenured generation   total 69632K, used 2696K [0x227d0000, 0x26bd0000, 0x26bd0000)</span><br><span class="line">the space 69632K,   3% used [0x227d0000, 0x22a720f8, 0x22a72200, 0x26bd0000)</span><br><span class="line"> compacting perm gen  total 8192K, used 2898K [0x26bd0000, 0x273d0000, 0x2abd0000)</span><br><span class="line">   the space 8192K,  35% used [0x26bd0000, 0x26ea4ba8, 0x26ea4c00, 0x273d0000)</span><br><span class="line">    ro space 8192K,  66% used [0x2abd0000, 0x2b12bcc0, 0x2b12be00, 0x2b3d0000)</span><br><span class="line">    rw space 12288K,  46% used [0x2b3d0000, 0x2b972060, 0x2b972200, 0x2bfd0000)</span><br><span class="line">34.735: [DefNew: 52568K-&gt;3433K(55296K), 0.0072126 secs] 55264K-&gt;6615K(124928K)Heap after gc invocations&#x3D;8:</span><br><span class="line"> def new generation   total 55296K, used 3433K [0x1ebd0000, 0x227d0000, 0x227d0000)</span><br><span class="line">eden space 49152K,   0% used [0x1ebd0000, 0x1ebd0000, 0x21bd0000)</span><br><span class="line">  from space 6144K,  55% used [0x21bd0000, 0x21f2a5e8, 0x221d0000)</span><br><span class="line">  to   space 6144K,   0% used [0x221d0000, 0x221d0000, 0x227d0000)</span><br><span class="line"> tenured generation   total 69632K, used 3182K [0x227d0000, 0x26bd0000, 0x26bd0000)</span><br><span class="line">the space 69632K,   4% used [0x227d0000, 0x22aeb958, 0x22aeba00, 0x26bd0000)</span><br><span class="line"> compacting perm gen  total 8192K, used 2898K [0x26bd0000, 0x273d0000, 0x2abd0000)</span><br><span class="line">   the space 8192K,  35% used [0x26bd0000, 0x26ea4ba8, 0x26ea4c00, 0x273d0000)</span><br><span class="line">    ro space 8192K,  66% used [0x2abd0000, 0x2b12bcc0, 0x2b12be00, 0x2b3d0000)</span><br><span class="line">    rw space 12288K,  46% used [0x2b3d0000, 0x2b972060, 0x2b972200, 0x2bfd0000)</span><br><span class="line">&#125;</span><br><span class="line">, 0.0757599 secs]</span><br><span class="line"></span><br><span class="line">-Xloggc:filename:与上面几个配合使用，把相关日志信息记录到文件以便分析。</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h1 id="常见配置汇总"><a href="#常见配置汇总" class="headerlink" title="常见配置汇总"></a>常见配置汇总</h1><h2 id="堆设置"><a href="#堆设置" class="headerlink" title="堆设置"></a>堆设置</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">-Xms:初始堆大小</span><br><span class="line">-Xmx:最大堆大小</span><br><span class="line">-XX:NewSize&#x3D;n:设置年轻代大小</span><br><span class="line">-XX:NewRatio&#x3D;n:设置年轻代和年老代的比值。如:为3，表示年轻代与年老代比值为1：3，年轻代占整个年轻代年老代和的1&#x2F;4</span><br><span class="line">-XX:SurvivorRatio&#x3D;n:年轻代中Eden区与两个Survivor区的比值。注意Survivor区有两个。如：3，表示Eden：Survivor&#x3D;3：2，一个Survivor区占整个年轻代的1&#x2F;5</span><br><span class="line">-XX:MaxPermSize&#x3D;n:设置持久代大小</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="收集器设置"><a href="#收集器设置" class="headerlink" title="收集器设置"></a>收集器设置</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-XX:+UseSerialGC:设置串行收集器</span><br><span class="line">-XX:+UseParallelGC:设置并行收集器</span><br><span class="line">-XX:+UseParalledlOldGC:设置并行年老代收集器</span><br><span class="line">-XX:+UseConcMarkSweepGC:设置并发收集器</span><br></pre></td></tr></table></figure>
+
+<h2 id="垃圾回收统计信息"><a href="#垃圾回收统计信息" class="headerlink" title="垃圾回收统计信息"></a>垃圾回收统计信息</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-XX:+PrintGC</span><br><span class="line">-XX:+PrintGCDetails</span><br><span class="line">-XX:+PrintGCTimeStamps</span><br><span class="line">-Xloggc:filename</span><br></pre></td></tr></table></figure>
+<h2 id="并行收集器设置"><a href="#并行收集器设置" class="headerlink" title="并行收集器设置"></a>并行收集器设置</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-XX:ParallelGCThreads&#x3D;n:设置并行收集器收集时使用的CPU数。并行收集线程数。</span><br><span class="line">-XX:MaxGCPauseMillis&#x3D;n:设置并行收集最大暂停时间</span><br><span class="line">-XX:GCTimeRatio&#x3D;n:设置垃圾回收时间占程序运行时间的百分比。公式为1&#x2F;(1+n)</span><br></pre></td></tr></table></figure>
+
+<h2 id="并发收集器设置"><a href="#并发收集器设置" class="headerlink" title="并发收集器设置"></a>并发收集器设置</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-XX:+CMSIncrementalMode:设置为增量模式。适用于单CPU情况。</span><br><span class="line">-XX:ParallelGCThreads&#x3D;n:设置并发收集器年轻代收集方式为并行收集时，使用的CPU数。并行收集线程数。</span><br></pre></td></tr></table></figure>
+
+<h1 id="调优总结"><a href="#调优总结" class="headerlink" title="调优总结"></a>调优总结</h1><h2 id="年轻代大小选择"><a href="#年轻代大小选择" class="headerlink" title="年轻代大小选择"></a>年轻代大小选择</h2><ul>
+<li>响应时间优先的应用：尽可能设大，直到接近系统的最低响应时间限制（根据实际情况选择）。在此种情况下，年轻代收集发生的频率也是最小的。同时，减少到达年老代的对象。</li>
+<li>吞吐量优先的应用：尽可能的设置大，可能到达Gbit的程度。因为对响应时间没有要求，垃圾收集可以并行进行，一般适合8CPU以上的应用。</li>
+</ul>
+<h2 id="年老代大小选择"><a href="#年老代大小选择" class="headerlink" title="年老代大小选择"></a>年老代大小选择</h2><ul>
+<li>响应时间优先的应用：年老代使用并发收集器，所以其大小需要小心设置，一般要考虑并发会话率和会话持续时间等一些参数。如果堆设置小了，可以会造成内存碎片、高回收频率以及应用暂停而使用传统的标记清除方式；如果堆大了，则需要较长的收集时间。最优化的方案，一般需要参考以下数据获得：</li>
+</ul>
+<p>并发垃圾收集信息</p>
+<p>持久代并发收集次数</p>
+<p>传统GC信息</p>
+<p>花在年轻代和年老代回收上的时间比例</p>
+<p>减少年轻代和年老代花费的时间，一般会提高应用的效率</p>
+<ul>
+<li>吞吐量优先的应用：一般吞吐量优先的应用都有一个很大的年轻代和一个较小的年老代。原因是，这样可以尽可能回收掉大部分短期对象，减少中期的对象，而年老代尽存放长期存活对象。</li>
+</ul>
+<h2 id="较小堆引起的碎片问题"><a href="#较小堆引起的碎片问题" class="headerlink" title="较小堆引起的碎片问题"></a>较小堆引起的碎片问题</h2><ul>
+<li>因为年老代的并发收集器使用标记、清除算法，所以不会对堆进行压缩。当收集器回收时，他会把相邻的空间进行合并，这样可以分配给较大的对象。但是，当堆空间较小时，运行一段时间以后，就会出现“碎片”，如果并发收集器找不到足够的空间，那么并发收集器将会停止，然后使用传统的标记、清除方式进行回收。如果出现“碎片”，可能需要进行如下配置：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-XX:+UseCMSCompactAtFullCollection：使用并发收集器时，开启对年老代的压缩。</span><br><span class="line">-XX:CMSFullGCsBeforeCompaction&#x3D;0：上面配置开启的情况下，这里设置多少次Full GC后，对年老代进行压缩</span><br></pre></td></tr></table></figure>
+
+
+</li>
+</ul>
+<p><a target="_blank" rel="noopener" href="https://www.cnblogs.com/wangzhongqiu/p/8908266.html">深入理解java虚拟机</a></p>
+<h1 id="自带的内存管理机制"><a href="#自带的内存管理机制" class="headerlink" title="自带的内存管理机制"></a>自带的内存管理机制</h1><p>jconsole JDK自带的内存监测工具，路径jdk bin目录下jconsole.exe，双击可运行。连接方式有两种，第一种是本地方式如调试时运行的进程可以直接连，第二种是远程方式，可以连接以服务形式启动的进程。远程连接方式是：在目标进程的jvm启动参数中添加-Dcom.sun.management.jmxremote.port=1090 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false 1090是监听的端口号具体使用时要进行修改，然后使用IP加端口号连接即可。通过该工具可以监测到当时内存的大小，CPU的使用量以及类的加载，<br>还提供了手动gc的功能。优点是效率高，速度快，在不影响进行运行的情况下监测产品的运行。缺点是无法看到类或者对象之类的具体信息</p>
+<h1 id="堆内存的分配策略"><a href="#堆内存的分配策略" class="headerlink" title="堆内存的分配策略"></a>堆内存的分配策略</h1><ul>
+<li>策略1</li>
+</ul>
+<p>当在程序中生成对象时，正常对象会在年轻代中分配空间，如果是过大的对象也可能会直接在年老代生成（据观测在运行某程序时候每次会生成一个十兆的空间用收发消息，这部分内存就会直接在年老代分配）。年轻代在空间被分配完的时候就会发起内存回收，大部分内存会被回收，一部分幸存的内存会被拷贝至Survivor的from区，经过多次回收以后如果from区内存也分配完毕，就会也发生内存回收然后将剩余的对象拷贝至to区。等到to区也满的时候，就会再次发生内存回收然后把幸存的对象拷贝至年老区。</p>
+<p>JVM初始分配的内存由-Xms指定，默认是物理内存的1/64；JVM最大分配的内存由 -Xmx指定，默认是物理内存的1/4。默认空余堆内存小于40%时，JVM就会增大堆直到-Xmx的最大限制；空余堆内存大于70%时，JVM会减少堆 直到-Xms的最小限制。因此服务器一般设置-Xms、-Xmx相等以避免在每次GC 后调整堆的大小。</p>
+<ul>
+<li>策略2</li>
+</ul>
+<p>对象优先在Eden分配，当新生区没有足够的内存是，通过分配担保机制提前转移到老年代中去</p>
+<p>大对象直接进入老年代。大对象是指需要大量连续内存空间的对象，虚拟机提供了参数 -XX:PretenureSizeThreshold（只对Serial，PerNew两个回收器起效），令大于这个值得对象直接在老年代分配，避免了Eden和两个Survival之间发生大量的内存复制。</p>
+<p>长期存活的对象将进入老年代。虚拟机给每个对象定义了对象年龄计数器（Age），如果对象在Eden出生，经过第一次Minor GC后依然存活，并且能被Survival容纳的话，将被移动到Survival，对象年龄设为1。对象在Survival中每熬过一次Major GC，年龄就增加1，达到一定程度（默认是15），就会被晋升到老年代。对象晋升老年代的阈值，可以通过参数-XX:MaxTenuringThreShold 指定</p>
+<p>动态对象年龄判断。如果在Survival空间中相同年龄所有对象的大小综合超过了Survival空间的一半，年龄大于等于这个年龄的对象都会被晋升到老年代。无需等待年龄超过MaxTenuringThreShold指定的年龄</p>
+<p>空间分配担保。只要老年代的连续空间大于新生代对象总和或者历次晋升的平均大小，就进行Major GC，否则进行Full  GC。</p>
+<h1 id="JVM常用参数设置"><a href="#JVM常用参数设置" class="headerlink" title="JVM常用参数设置"></a>JVM常用参数设置</h1><h2 id="整体考虑堆大小"><a href="#整体考虑堆大小" class="headerlink" title="整体考虑堆大小"></a>整体考虑堆大小</h2><p>-Xms3550m， 初始化堆大小。通常情况和-Xmx大小设置一样，避免虚拟机频繁自动计算后调整堆大小。 </p>
+<p>-Xmx3550m，最大堆大小。</p>
+<h2 id="考虑分代设置堆大小"><a href="#考虑分代设置堆大小" class="headerlink" title="考虑分代设置堆大小"></a>考虑分代设置堆大小</h2><p>首先通过jstat等工具查看应用程序正常情况下需要堆大小，再根据实际情况设置。</p>
+<h3 id="新生代"><a href="#新生代" class="headerlink" title="新生代"></a>新生代</h3><p>-xmn2g，新生代大小。Sun官方推荐配置为整个堆的3/8。<br>-XX:SurvivorRatio=8。Eden和Survivor的比值。</p>
+<h3 id="老年代"><a href="#老年代" class="headerlink" title="老年代"></a>老年代</h3><p>老年代=整个堆大小-新生代-永久代</p>
+<h3 id="永久带"><a href="#永久带" class="headerlink" title="永久带"></a>永久带</h3><p>-XX:Permsize=512m,设置永久代初始值。<br>-XX:MaxPermsize=512m，设置永久代的最大值。<br>注：Java8没有永久代说法，它们被称为元空间，-XX:MetaspaceSize=N</p>
+<h2 id="考虑虚拟机栈"><a href="#考虑虚拟机栈" class="headerlink" title="考虑虚拟机栈"></a>考虑虚拟机栈</h2><p>每个线程池的堆栈大小。在jdk5以上的版本，每个线程堆栈大小为1m，jdk5以前的版本是每个线程池大小为256k。一般设置256k。<br>-Xss256K.</p>
+<h2 id="考虑垃圾收集器"><a href="#考虑垃圾收集器" class="headerlink" title="考虑垃圾收集器"></a>考虑垃圾收集器</h2><h3 id="Serial收集器-串行收集器"><a href="#Serial收集器-串行收集器" class="headerlink" title="Serial收集器(串行收集器)"></a>Serial收集器(串行收集器)</h3><p>历史最悠久的串行收集器。参数-XX:UseSerialGC。不太常用。</p>
+<h3 id="ParNew和ParOld收集器-并发收集器"><a href="#ParNew和ParOld收集器-并发收集器" class="headerlink" title="ParNew和ParOld收集器(并发收集器)"></a>ParNew和ParOld收集器(并发收集器)</h3><p>Serial的多线程版本收集器。</p>
+<h3 id="Parallel-Scavenge-吞吐量优先垃圾收集器"><a href="#Parallel-Scavenge-吞吐量优先垃圾收集器" class="headerlink" title="Parallel Scavenge(吞吐量优先垃圾收集器)"></a>Parallel Scavenge(吞吐量优先垃圾收集器)</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">并行收集器，不同于多线程收集器ParNew，关注吞吐量的收集器。 </span><br><span class="line">-XX:MaxGCPauseMillis&#x3D;10，设置垃圾收集停顿的最大毫秒数。 </span><br><span class="line">-XX:GCTimeRatio&#x3D;49，垃圾收集器占比，默认是99。 </span><br><span class="line">-XX:+UseAdaptiveSeizPolicy，GC自适应调节策略。 </span><br><span class="line">-XX:+UseParallelGC,虚拟机Server模式默认值，使用Parallel Scavenge + Serial Old进行内存回收。 </span><br><span class="line">-XX:+UseParallelOldGC, 使用Parallel Scavenge + Parallel Old 进行内存回收。</span><br></pre></td></tr></table></figure>
+
+<h3 id="CMS"><a href="#CMS" class="headerlink" title="CMS"></a>CMS</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">CMS作为老年代收集器，不能与Parallel Scavenge并存。可能会有内存碎片问题。 </span><br><span class="line">-XX:+UserConcMarkSweepGC，新生代默认用ParNew收集。也可以用-XX:+UserParNewGC强制指定新生代用ParNew收集 </span><br><span class="line">-XX:ParallelGCThreads&#x3D;4，设置垃圾收集线程数。默认是(CPU数量+3)&#x2F;4。垃圾收集线程数不少于25%，当CPU数量小于4的时候影响大。 </span><br><span class="line">-XX:CMSInitiatingOccupancyFraction&#x3D;80，老年代垃圾占比达到这个阈值开始CMS收集，1.6默认是92。设置过高容易导致并发收集失败，会出现SerialOld收集的情况。 </span><br><span class="line">-XX:+UseCMSCompactAtFullCollection，在FULL GC的时候， 对年老代的压缩增加这个参数是个好习惯。可能会影响性能,但是可以消除碎片。 </span><br><span class="line">-XX:CMSFullGCsBeforeCompaction&#x3D;1，多少次后进行内存压缩。 </span><br><span class="line">-XX:+CMSParallelRemarkEnabled, 为了减少第二次暂停的时间，开启并行remark,降低标记停顿</span><br></pre></td></tr></table></figure>
+
+<h3 id="G1-Garbage-First"><a href="#G1-Garbage-First" class="headerlink" title="G1(Garbage First)"></a>G1(Garbage First)</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-XX:+UseG1GC，谨慎使用，需要经过线上测试，还没有被设置为默认垃圾收集器。 </span><br><span class="line">之前的垃圾收集器收集的范围是新生代或者老年代，而G1垃圾收集器收集的范围包括新生代和老年代整个堆。G1将Java堆划为多个大小相同的独立区域(Region)，垃圾收集单位是Region。G1垃圾收集适合至少大于4G内存得系统。并且不会产生内存空间碎片。</span><br></pre></td></tr></table></figure>
+
+<h3 id="其他参数"><a href="#其他参数" class="headerlink" title="其他参数"></a>其他参数</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-XX:MaxTenuringThreshold&#x3D;30，晋升老年代的年龄。 </span><br><span class="line">-XX:PretenureSizeThreshold&#x3D;?，晋升老年代的对象大小。没设置过。</span><br></pre></td></tr></table></figure>
+
+<h3 id="考虑日志打印"><a href="#考虑日志打印" class="headerlink" title="考虑日志打印"></a>考虑日志打印</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">-verbose:gc，打印GC日志 </span><br><span class="line">-XX:+PrintGC，打印GC基本日志 </span><br><span class="line">-XX:+PrintGCDetails，打印GC详细日志 </span><br><span class="line">-XX:+PrintGCTimeStamps，打印相对时间戳 </span><br><span class="line">-XX:+PrintGCApplicationStoppedTime,打印垃圾回收期间程序暂停的时间 </span><br><span class="line">-XX:+PrintGCApplicationConcurrentTime,打印每次垃圾回收前,程序未中断的执行时间 </span><br><span class="line">-XX:+PrintTenuringDistribution：查看每次minor GC后新的存活周期的阈值 </span><br><span class="line">-XX:+PrintTLAB,查看TLAB空间的使用情况 </span><br><span class="line">-Xloggc:filename,把相关日志信息记录到文件以便分析</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="考虑OOM-堆溢出-时保留现场日志"><a href="#考虑OOM-堆溢出-时保留现场日志" class="headerlink" title="考虑OOM(堆溢出)时保留现场日志"></a>考虑OOM(堆溢出)时保留现场日志</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">当抛出OOM时进行heapdump</span><br><span class="line">-XX:+HeapDumpOnOutOfMemoryError,JVM异常自动生成堆转储 </span><br><span class="line">-XX:HeapDumpPath&#x3D;，堆转储文件名</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+
+
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/JVM%E8%B0%83%E4%BC%98/" rel="tag"># JVM调优</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2018-09-29/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3java%E8%99%9A%E6%8B%9F%E6%9C%BA-java%E5%86%85%E5%AD%98%E5%8C%BA%E5%9F%9F%E5%92%8C%E5%86%85%E5%AD%98%E6%BA%A2%E5%87%BA%E5%BC%82%E5%B8%B8/" rel="prev" title="深入理解java虚拟机-java内存区域和内存溢出异常">
+      <i class="fa fa-chevron-left"></i> 深入理解java虚拟机-java内存区域和内存溢出异常
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2018-10-24/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3java%E8%99%9A%E6%8B%9F%E6%9C%BA-%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8%E4%B8%8E%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AD%96%E7%95%A5/" rel="next" title="深入理解java虚拟机-垃圾收集器与内存分配策略">
+      深入理解java虚拟机-垃圾收集器与内存分配策略 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A0%86%E5%A4%A7%E5%B0%8F%E8%AE%BE%E7%BD%AE"><span class="nav-number">1.</span> <span class="nav-text">堆大小设置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B8%E5%9E%8B%E8%AE%BE%E7%BD%AE"><span class="nav-number">1.1.</span> <span class="nav-text">典型设置</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9B%9E%E6%94%B6%E5%99%A8%E9%80%89%E6%8B%A9"><span class="nav-number">2.</span> <span class="nav-text">回收器选择</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%9E%E5%90%90%E9%87%8F%E4%BC%98%E5%85%88%E7%9A%84%E5%B9%B6%E8%A1%8C%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">2.1.</span> <span class="nav-text">吞吐量优先的并行收集器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%E6%9C%89%E9%99%90%E7%9A%84%E5%B9%B6%E5%8F%91%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">2.2.</span> <span class="nav-text">响应时间有限的并发收集器</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%BE%85%E5%8A%A9%E4%BF%A1%E6%81%AF"><span class="nav-number">3.</span> <span class="nav-text">辅助信息</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E9%85%8D%E7%BD%AE%E6%B1%87%E6%80%BB"><span class="nav-number">4.</span> <span class="nav-text">常见配置汇总</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A0%86%E8%AE%BE%E7%BD%AE"><span class="nav-number">4.1.</span> <span class="nav-text">堆设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%94%B6%E9%9B%86%E5%99%A8%E8%AE%BE%E7%BD%AE"><span class="nav-number">4.2.</span> <span class="nav-text">收集器设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E7%BB%9F%E8%AE%A1%E4%BF%A1%E6%81%AF"><span class="nav-number">4.3.</span> <span class="nav-text">垃圾回收统计信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B9%B6%E8%A1%8C%E6%94%B6%E9%9B%86%E5%99%A8%E8%AE%BE%E7%BD%AE"><span class="nav-number">4.4.</span> <span class="nav-text">并行收集器设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B9%B6%E5%8F%91%E6%94%B6%E9%9B%86%E5%99%A8%E8%AE%BE%E7%BD%AE"><span class="nav-number">4.5.</span> <span class="nav-text">并发收集器设置</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B0%83%E4%BC%98%E6%80%BB%E7%BB%93"><span class="nav-number">5.</span> <span class="nav-text">调优总结</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B9%B4%E8%BD%BB%E4%BB%A3%E5%A4%A7%E5%B0%8F%E9%80%89%E6%8B%A9"><span class="nav-number">5.1.</span> <span class="nav-text">年轻代大小选择</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B9%B4%E8%80%81%E4%BB%A3%E5%A4%A7%E5%B0%8F%E9%80%89%E6%8B%A9"><span class="nav-number">5.2.</span> <span class="nav-text">年老代大小选择</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BE%83%E5%B0%8F%E5%A0%86%E5%BC%95%E8%B5%B7%E7%9A%84%E7%A2%8E%E7%89%87%E9%97%AE%E9%A2%98"><span class="nav-number">5.3.</span> <span class="nav-text">较小堆引起的碎片问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%87%AA%E5%B8%A6%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%9C%BA%E5%88%B6"><span class="nav-number">6.</span> <span class="nav-text">自带的内存管理机制</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A0%86%E5%86%85%E5%AD%98%E7%9A%84%E5%88%86%E9%85%8D%E7%AD%96%E7%95%A5"><span class="nav-number">7.</span> <span class="nav-text">堆内存的分配策略</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#JVM%E5%B8%B8%E7%94%A8%E5%8F%82%E6%95%B0%E8%AE%BE%E7%BD%AE"><span class="nav-number">8.</span> <span class="nav-text">JVM常用参数设置</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B4%E4%BD%93%E8%80%83%E8%99%91%E5%A0%86%E5%A4%A7%E5%B0%8F"><span class="nav-number">8.1.</span> <span class="nav-text">整体考虑堆大小</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%80%83%E8%99%91%E5%88%86%E4%BB%A3%E8%AE%BE%E7%BD%AE%E5%A0%86%E5%A4%A7%E5%B0%8F"><span class="nav-number">8.2.</span> <span class="nav-text">考虑分代设置堆大小</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B0%E7%94%9F%E4%BB%A3"><span class="nav-number">8.2.1.</span> <span class="nav-text">新生代</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%80%81%E5%B9%B4%E4%BB%A3"><span class="nav-number">8.2.2.</span> <span class="nav-text">老年代</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%B0%B8%E4%B9%85%E5%B8%A6"><span class="nav-number">8.2.3.</span> <span class="nav-text">永久带</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%80%83%E8%99%91%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%A0%88"><span class="nav-number">8.3.</span> <span class="nav-text">考虑虚拟机栈</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%80%83%E8%99%91%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">8.4.</span> <span class="nav-text">考虑垃圾收集器</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Serial%E6%94%B6%E9%9B%86%E5%99%A8-%E4%B8%B2%E8%A1%8C%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">8.4.1.</span> <span class="nav-text">Serial收集器(串行收集器)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ParNew%E5%92%8CParOld%E6%94%B6%E9%9B%86%E5%99%A8-%E5%B9%B6%E5%8F%91%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">8.4.2.</span> <span class="nav-text">ParNew和ParOld收集器(并发收集器)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Parallel-Scavenge-%E5%90%9E%E5%90%90%E9%87%8F%E4%BC%98%E5%85%88%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">8.4.3.</span> <span class="nav-text">Parallel Scavenge(吞吐量优先垃圾收集器)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CMS"><span class="nav-number">8.4.4.</span> <span class="nav-text">CMS</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#G1-Garbage-First"><span class="nav-number">8.4.5.</span> <span class="nav-text">G1(Garbage First)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E5%8F%82%E6%95%B0"><span class="nav-number">8.4.6.</span> <span class="nav-text">其他参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%80%83%E8%99%91%E6%97%A5%E5%BF%97%E6%89%93%E5%8D%B0"><span class="nav-number">8.4.7.</span> <span class="nav-text">考虑日志打印</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%80%83%E8%99%91OOM-%E5%A0%86%E6%BA%A2%E5%87%BA-%E6%97%B6%E4%BF%9D%E7%95%99%E7%8E%B0%E5%9C%BA%E6%97%A5%E5%BF%97"><span class="nav-number">8.4.8.</span> <span class="nav-text">考虑OOM(堆溢出)时保留现场日志</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="陈伟杰"
+      src="/images/favicon.ico">
+  <p class="site-author-name" itemprop="name">陈伟杰</p>
+  <div class="site-description" itemprop="description">学习，坚持。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">26</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">68</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="https://github.com/chenwj1103" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;chenwj1103" rel="noopener" target="_blank"><i class="github fa-fw"></i>GitHub</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">陈伟杰</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+      <span class="post-meta-item-text">站点总字数：</span>
+    <span title="站点总字数">638k</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-coffee"></i>
+    </span>
+      <span class="post-meta-item-text">站点阅读时长 &asymp;</span>
+    <span title="站点阅读时长">9:40</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
